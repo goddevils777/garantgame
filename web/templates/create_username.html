@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание профиля - {{ bot_name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+               min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+                    max-width: 500px; width: 90%; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #667eea; font-size: 2.5em; margin-bottom: 10px; }
+        .user-info { background: #f8f9fa; padding: 20px; border-radius: 15px; margin-bottom: 30px; 
+                    display: flex; align-items: center; gap: 15px; }
+        .user-info img { width: 60px; height: 60px; border-radius: 50%; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
+        .form-group input { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 10px; 
+                           font-size: 16px; transition: border-color 0.3s; }
+        .form-group input:focus { border-color: #667eea; outline: none; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; 
+              padding: 15px 30px; border: none; border-radius: 10px; cursor: pointer; 
+              font-size: 16px; width: 100%; margin-top: 10px; }
+        .btn:hover { transform: translateY(-2px); }
+        .flash { padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .username-rules { background: #e3f2fd; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .username-rules h4 { color: #1976d2; margin-bottom: 10px; }
+        .username-rules ul { margin-left: 20px; color: #666; }
+        .check-result { margin-top: 10px; padding: 10px; border-radius: 5px; }
+        .available { background: #d4edda; color: #155724; }
+        .taken { background: #f8d7da; color: #721c24; }
+        .flash.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 {{ bot_name }}</h1>
+            <p>Создание игрового профиля</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="user-info">
+            {% if user.photo_url %}
+                <img src="{{ user.photo_url }}" alt="Аватар">
+            {% else %}
+                <div style="width: 60px; height: 60px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                    👤
+                </div>
+            {% endif %}
+            <div>
+                <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+            </div>
+        </div>
+
+        <div class="username-rules">
+            <h4>📋 Правила создания никнейма:</h4>
+            <ul>
+                <li>От 3 до 20 символов</li>
+                <li>Только буквы, цифры и подчеркивания</li>
+                <li>Должен быть уникальным</li>
+                <li>Нельзя будет изменить позже</li>
+            </ul>
+        </div>
+
+        <form method="POST" action="/create_profile">
+            <div class="form-group">
+                <label for="unique_username">Выберите игровой никнейм:</label>
+                <input type="text" id="unique_username" name="unique_username" 
+                       placeholder="Введите уникальный никнейм" required 
+                       pattern="[a-zA-Z0-9_]{3,20}" 
+                       onchange="checkUsername(this.value)">
+                <div id="check-result"></div>
+            </div>
+            <button type="submit" class="btn">🚀 Создать профиль</button>
+        </form>
+    </div>
+
+    <script>
+        function checkUsername(username) {
+            const result = document.getElementById('check-result');
+            if (username.length < 3) {
+                result.innerHTML = '<div class="check-result taken">Слишком короткий никнейм</div>';
+                return;
+            }
+            if (username.length > 20) {
+                result.innerHTML = '<div class="check-result taken">Слишком длинный никнейм</div>';
+                return;
+            }
+            if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                result.innerHTML = '<div class="check-result taken">Недопустимые символы</div>';
+                return;
+            }
+            result.innerHTML = '<div class="check-result available">✓ Никнейм соответствует правилам</div>';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать турнир - {{ bot_name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                 color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .create-form { background: white; padding: 30px; border-radius: 15px; 
+                      margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
+        .form-group input, select { width: 100%; padding: 12px; border: 2px solid #ddd; 
+                                   border-radius: 8px; font-size: 16px; }
+        .form-group input:focus { border-color: #667eea; outline: none; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+              color: white; padding: 12px 30px; border: none; border-radius: 8px; 
+              cursor: pointer; font-size: 16px; width: 100%; margin-top: 10px; }
+        .btn:hover { transform: translateY(-2px); }
+        .flash { padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); }
+        .flash.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Создать турнир</h1>
+            <p>Настройте параметры вашего турнира</p>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    {% if user.photo_url %}
+                        <img src="{{ user.photo_url }}" 
+                             style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);"
+                             alt="Аватар">
+                    {% else %}
+                        <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
+                            🎮
+                        </div>
+                    {% endif %}
+                    <div>
+                        <strong style="font-size: 1.2em;">{{ user.unique_username }}</strong>
+                        <br><small style="opacity: 0.8;">{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %}</small>
+                    </div>
+                    <div style="margin-left: auto;">
+                        <a href="/logout" style="color: white; text-decoration: none; padding: 8px 15px; background: rgba(255,255,255,0.2); border-radius: 5px;">
+                            🚪 Выйти
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <a href="/create_tournament_page" class="nav-btn"
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    📝 Создать турнир
+                </a>
+                <a href="/" class="nav-btn"
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                    🏠 Мои турниры
+                </a>
+                <a href="/public_tournaments" class="nav-btn"
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                    🌐 Общие турниры
+                </a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="create-form">
+            <h2>🏆 Параметры турнира</h2>
+            <form method="POST" action="/create_tournament">
+                <div class="form-group">
+                    <label for="tournament_name">Название турнира:</label>
+                    <input type="text" id="tournament_name" name="tournament_name" 
+                           placeholder="Введите название турнира" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Количество участников:</label>
+                    <div style="display: grid; grid-template-columns: 1fr 20px 1fr; gap: 10px; align-items: center;">
+                        <div>
+                            <label for="min_players" style="font-size: 14px; margin-bottom: 5px;">Минимум:</label>
+                            <input type="number" id="min_players" name="min_players" 
+                                   min="10" max="100" value="10" required 
+                                   style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                        </div>
+                        <div style="text-align: center; font-weight: bold; color: #667eea; font-size: 18px;">—</div>
+                        <div>
+                            <label for="max_players" style="font-size: 14px; margin-bottom: 5px;">Максимум:</label>
+                            <input type="number" id="max_players" name="max_players" 
+                                   min="10" max="100" value="16" required 
+                                   style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                        </div>
+                    </div>
+                    <small style="color: #666; margin-top: 5px; display: block;">От 10 до 100 участников</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="entry_fee">Стоимость участия (USD):</label>
+                    <div style="position: relative;">
+                        <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #666; font-weight: bold;">$</span>
+                        <input type="number" id="entry_fee" name="entry_fee" 
+                               min="0" max="1000" step="0.01" value="0" required 
+                               style="width: 100%; padding: 12px 12px 12px 30px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                    </div>
+                    <small style="color: #666; margin-top: 5px; display: block;">Укажите 0 для бесплатного турнира</small>
+                </div>
+                
+              <div class="form-group">
+                    <label>Тип турнира:</label>
+                    <div style="display: flex; gap: 20px; margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="tournament_type" value="public" checked 
+                                   style="width: auto; margin: 0;" onchange="togglePasswordField()">
+                            <span>🌐 Публичный</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="tournament_type" value="private" 
+                                   style="width: auto; margin: 0;" onchange="togglePasswordField()">
+                            <span>🔒 Приватный</span>
+                        </label>
+                    </div>
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        Публичные турниры видны всем, приватные требуют пароль для входа
+                    </small>
+                </div>
+
+                <div class="form-group" id="passwordField" style="display: none;">
+                    <label for="tournament_password">Пароль для приватного турнира:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="tournament_password" name="tournament_password" 
+                               placeholder="Введите 6-значный пароль" 
+                               min="100000" max="999999"
+                               style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                        <button type="button" onclick="generatePassword()" 
+                                style="background: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;">
+                            🎲 Генерировать
+                        </button>
+                    </div>
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        6 цифр (например: 123456). Этот пароль понадобится для входа в турнир.
+                    </small>
+                    <div id="generatedPassword" style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 5px; display: none;">
+                        <strong>Сгенерированный пароль: <span id="passwordDisplay"></span></strong>
+                        <br><small>Сохраните этот пароль для передачи участникам</small>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Дата и время начала турнира:</label>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+                        <div>
+                            <input type="date" id="start_date" name="start_date" required 
+                                   style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                        </div>
+                        <div>
+                            <input type="time" id="start_time" name="start_time" required 
+                                   style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn">🏆 Создать турнир</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+    // Валидация диапазона участников
+    document.getElementById('min_players').addEventListener('change', function() {
+        const minVal = parseInt(this.value);
+        const maxInput = document.getElementById('max_players');
+        const maxVal = parseInt(maxInput.value);
+        
+        if (minVal > maxVal) {
+            maxInput.value = minVal;
+        }
+        maxInput.min = minVal;
+    });
+
+    document.getElementById('max_players').addEventListener('change', function() {
+        const maxVal = parseInt(this.value);
+        const minInput = document.getElementById('min_players');
+        const minVal = parseInt(minInput.value);
+        
+        if (maxVal < minVal) {
+            minInput.value = maxVal;
+        }
+        minInput.max = maxVal;
+    });
+
+    // Показать/скрыть поле пароля
+    function togglePasswordField() {
+        const privateRadio = document.querySelector('input[name="tournament_type"][value="private"]');
+        const passwordField = document.getElementById('passwordField');
+        const passwordInput = document.getElementById('tournament_password');
+        
+        if (privateRadio.checked) {
+            passwordField.style.display = 'block';
+            passwordInput.required = true;
+        } else {
+            passwordField.style.display = 'none';
+            passwordInput.required = false;
+            passwordInput.value = '';
+            document.getElementById('generatedPassword').style.display = 'none';
+        }
+    }
+
+    // Генератор пароля
+    function generatePassword() {
+        const password = Math.floor(100000 + Math.random() * 900000);
+        const passwordInput = document.getElementById('tournament_password');
+        const passwordDisplay = document.getElementById('passwordDisplay');
+        const generatedDiv = document.getElementById('generatedPassword');
+        
+        passwordInput.value = password;
+        passwordDisplay.textContent = password;
+        generatedDiv.style.display = 'block';
+        
+        // Изменяем цвет поля на зеленый
+        passwordInput.style.borderColor = '#28a745';
+    }
+
+    // Валидация пароля
+    document.getElementById('tournament_password').addEventListener('input', function() {
+        const value = this.value;
+        const generatedDiv = document.getElementById('generatedPassword');
+        
+        if (value.length > 0 && (value.length !== 6 || isNaN(value))) {
+            this.style.borderColor = '#dc3545';
+        } else if (value.length === 6) {
+            this.style.borderColor = '#28a745';
+        } else {
+            this.style.borderColor = '#ddd';
+        }
+        
+        // Скрываем сгенерированный пароль при ручном вводе
+        if (generatedDiv.style.display === 'block' && value !== document.getElementById('passwordDisplay').textContent) {
+            generatedDiv.style.display = 'none';
+        }
+    });
+    </script>
+</body>
+</html>

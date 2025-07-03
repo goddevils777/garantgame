@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ bot_name }} - Турнирная платформа</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                 color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .tournaments { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .tournament-card { background: white; padding: 25px; border-radius: 15px; 
+                          box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .tournament-title { color: #667eea; font-size: 1.3em; margin-bottom: 15px; }
+        .tournament-info { color: #666; margin-bottom: 10px; }
+        .status { padding: 5px 15px; border-radius: 20px; color: white; 
+                 font-size: 14px; display: inline-block; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+              color: white; padding: 12px 30px; border: none; border-radius: 8px; 
+              cursor: pointer; font-size: 16px; text-decoration: none; display: inline-block; }
+        .btn:hover { transform: translateY(-2px); }
+        .flash { padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);}
+        .tournament-title a:hover { color: #667eea !important; }
+        .tournament-card:hover { transform: translateY(-5px); transition: all 0.3s; } 
+        .flash.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 {{ bot_name }}</h1>
+            <p>Турнирная платформа с интеграцией Telegram</p>
+            
+            {% if user and user.profile_created %}
+                <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        {% if user.photo_url %}
+                            <img src="{{ user.photo_url }}" 
+                                 style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);"
+                                 alt="Аватар">
+                        {% else %}
+                            <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
+                                🎮
+                            </div>
+                        {% endif %}
+                        <div>
+                            <strong style="font-size: 1.2em;">{{ user.unique_username }}</strong>
+                            <br><small style="opacity: 0.8;">{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %}</small>
+                        </div>
+                        <div style="margin-left: auto;">
+                            <a href="/logout" style="color: white; text-decoration: none; padding: 8px 15px; background: rgba(255,255,255,0.2); border-radius: 5px;">
+                                🚪 Выйти
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% elif user and not user.profile_created %}
+                <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px; text-align: center;">
+                    <p style="margin-bottom: 15px;">🎯 Создайте игровой профиль для участия в турнирах</p>
+                    <a href="/create_profile" style="color: white; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.3); border-radius: 8px; display: inline-block;">
+                        📝 Создать профиль
+                    </a>
+                </div>
+            {% else %}
+                <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px; text-align: center;">
+                    <p style="margin-bottom: 15px;">Войдите через Telegram для создания и участия в турнирах:</p>
+                    {{ telegram_widget|safe }}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if user and user.profile_created %}
+       <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <a href="/create_tournament_page" class="nav-btn"
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                    📝 Создать турнир
+                </a>
+                <a href="/" class="nav-btn"
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    🌐 Все турниры
+                </a>
+                <a href="/private_tournaments" class="nav-btn"
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                    🔒 Приватные турниры
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+         <h2>🌐 Все турниры</h2>
+        <div class="tournaments">
+            {% if tournaments %}
+                {% for tournament in tournaments %}
+                <div class="tournament-card">
+                    <h3 class="tournament-title">
+                        <a href="/tournament/{{ tournament.id }}" style="text-decoration: none; color: inherit;">
+                            {% if tournament.tournament_type == 'private' %}
+                                🔒 {{ tournament.name }}
+                            {% else %}
+                                🌐 {{ tournament.name }}
+                            {% endif %}
+                        </a>
+                    </h3>
+                    <div class="tournament-info">
+                        <strong>ID:</strong> TOUR_{{ tournament.id }}
+                    </div>
+                    <div class="tournament-info">
+                        <strong>Создатель:</strong> {{ tournament.creator }}
+                    </div>
+                    <div class="tournament-info">
+                        <strong>Участники:</strong> {{ tournament.current_players }} из {{ tournament.min_players }}-{{ tournament.max_players }}
+                    </div>
+                    {% if tournament.start_date %}
+                    <div class="tournament-info">
+                        <strong>Начало:</strong> {{ tournament.start_date }} в {{ tournament.start_time }}
+                    </div>
+                    {% endif %}
+                    {% if tournament.entry_fee and tournament.entry_fee > 0 %}
+                    <div class="tournament-info">
+                        <strong>Стоимость участия:</strong> ${{ "%.2f"|format(tournament.entry_fee) }}
+                    </div>
+                    <div class="tournament-info">
+                        <strong>Призовой фонд:</strong> ${{ "%.2f"|format(tournament.entry_fee * tournament.current_players) }}
+                    </div>
+                    {% else %}
+                    <div class="tournament-info">
+                        <strong>Участие:</strong> <span style="color: #28a745; font-weight: bold;">Бесплатно</span>
+                    </div>
+                    {% endif %}
+                    <div class="tournament-info">
+                        {% if tournament.current_players >= tournament.min_players and tournament.current_players < tournament.max_players %}
+                            <span class="status" style="background: #28a745;">{{ tournament.status }} ✓</span>
+                        {% elif tournament.current_players < tournament.min_players %}
+                            <span class="status" style="background: #ffc107; color: #212529;">Нужно еще {{ tournament.min_players - tournament.current_players }} игроков</span>
+                        {% else %}
+                            <span class="status" style="background: #dc3545;">Турнир полный</span>
+                        {% endif %}
+                    </div>
+                    <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        {% if tournament.tournament_type == 'private' and user and user.unique_username != tournament.creator %}
+                            <a href="/tournament/{{ tournament.id }}/password" class="btn" 
+                               style="text-decoration: none; font-size: 14px; padding: 8px 15px; background: #dc3545; flex: 1;">
+                                🔒 Ввести пароль
+                            </a>
+                        {% else %}
+                            <a href="/tournament/{{ tournament.id }}" class="btn" 
+                               style="text-decoration: none; font-size: 14px; padding: 8px 15px; background: #17a2b8; flex: 1;">
+                                📋 Детали турнира
+                            </a>
+                        {% endif %}
+                        
+                        {% if user and user.unique_username == tournament.creator %}
+                            <a href="/delete_tournament/{{ tournament.id }}" class="btn" 
+                               style="text-decoration: none; font-size: 14px; padding: 8px 15px; background: #dc3545; flex: 0 1 auto;"
+                               onclick="return confirm('Вы уверены, что хотите удалить турнир?')">
+                                🗑️ Удалить
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    {% if tournament.current_players >= tournament.min_players %}
+                        <div style="margin-top: 10px; padding: 8px; background: #d4edda; border-radius: 5px; text-align: center; color: #155724; font-size: 14px;">
+                            ✅ Турнир готов к началу!
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="tournament-card">
+                    <p>🎯 У вас пока нет турниров. <a href="/create_tournament_page">Создайте первый!</a></p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
