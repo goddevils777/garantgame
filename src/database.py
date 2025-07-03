@@ -508,94 +508,97 @@ def init_database():
         conn.close()
 
 def calculate_prize_distribution(max_players, entry_fee, distribution_type='pyramid'):
-    """Рассчитать распределение призов"""
+    """Рассчитать распределение призов по ТОЧНОЙ таблице 1 в 1"""
     if entry_fee <= 0 or max_players <= 0:
         return {
             'total_pool': 0,
             'our_commission': 0,
             'prize_pool': 0,
-            'distribution': []
+            'distribution': [],
+            'prize_places': 0
         }
     
+    # Основные расчеты
     total_pool = max_players * entry_fee
     our_commission = total_pool * 0.05  # 5% комиссия
     prize_pool = total_pool - our_commission
     
-    # Количество призовых мест (максимум 20, но не больше участников)
-    prize_places = min(20, max_players)
+    # ПОЛНАЯ ТОЧНАЯ таблица из CSV файла
+    exact_percentages = {
+        10: [60.45, 34.55],
+        11: [60.45, 34.55],
+        12: [60.46, 34.54],
+        13: [60.45, 34.55],
+        14: [60.46, 34.54],
+        15: [51.15, 29.23, 14.61],
+        16: [51.16, 29.23, 14.61],
+        17: [51.15, 29.23, 14.62],
+        18: [51.16, 29.23, 14.61],
+        19: [51.15, 29.23, 14.62],
+        20: [47.5, 27.15, 13.57, 6.79],
+        25: [44.33, 25.33, 12.67, 6.34, 6.33],
+        30: [43.18, 24.68, 12.34, 6.17, 6.17, 2.46],
+        35: [42.09, 24.05, 12.03, 6.01, 6.01, 2.41, 2.41],
+        40: [41.05, 23.46, 11.73, 5.86, 5.86, 2.35, 2.35, 2.35],
+        45: [40.06, 22.89, 11.45, 5.72, 5.72, 2.29, 2.29, 2.29, 2.29],
+        50: [39.12, 22.35, 11.18, 5.59, 5.59, 2.23, 2.24, 2.24, 2.24, 2.24],
+        55: [38.66, 22.09, 11.05, 5.52, 5.52, 2.21, 2.21, 2.21, 2.21, 2.21, 1.1],
+        60: [38.22, 21.84, 10.92, 5.46, 5.46, 2.18, 2.18, 2.18, 2.18, 2.18, 1.1, 1.09],
+        65: [37.78, 21.59, 10.8, 5.4, 5.4, 2.16, 2.16, 2.16, 2.16, 2.16, 1.08, 1.08, 1.08],
+        70: [37.36, 21.35, 10.67, 5.34, 5.34, 2.13, 2.13, 2.13, 2.13, 2.13, 1.07, 1.07, 1.07, 1.07],
+        75: [36.94, 21.11, 10.56, 5.28, 5.28, 2.11, 2.11, 2.11, 2.11, 2.11, 1.06, 1.06, 1.06, 1.06, 1.06],
+        80: [36.54, 20.88, 10.44, 5.22, 5.22, 2.09, 2.09, 2.09, 2.09, 2.09, 1.05, 1.04, 1.04, 1.04, 1.04, 1.04],
+        85: [36.14, 20.65, 10.33, 5.16, 5.16, 2.06, 2.06, 2.06, 2.06, 2.06, 1.03, 1.03, 1.03, 1.03, 1.03, 1.03, 1.03],
+        90: [35.75, 20.43, 10.22, 5.11, 5.11, 2.04, 2.04, 2.04, 2.04, 2.04, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02],
+        95: [35.37, 20.21, 10.11, 5.05, 5.05, 2.02, 2.02, 2.02, 2.02, 2.02, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01],
+        100: [35, 20, 10, 5, 5, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    }
+    
+    # Количество призовых мест (20% от участников, минимум 2)
+    prize_places = max(2, int(max_players * 0.2))
     
     distribution = []
     
     if distribution_type == 'pyramid':
-        # Классическая "Пирамида"
-        percentages = {
-            1: 40,    # 1 место: 40%
-            2: 20,    # 2 место: 20%
-            3: 12,    # 3 место: 12%
-        }
+        # PYRAMID стратегия - получаем точные проценты из первой таблицы
+        if max_players in exact_percentages:
+            percentages = exact_percentages[max_players]
+        else:
+            # Находим ближайшее значение для pyramid
+            available_counts = list(exact_percentages.keys())
+            closest = min(available_counts, key=lambda x: abs(x - max_players))
+            percentages = exact_percentages[closest]
         
-        # 4-5 места: 10% всего (по 5% каждому)
-        for place in [4, 5]:
-            if place <= prize_places:
-                percentages[place] = 5
-        
-        # 6-10 места: 10% всего (по 2% каждому)
-        places_6_10 = [p for p in range(6, 11) if p <= prize_places]
-        if places_6_10:
-            percent_per_place = 10 / len(places_6_10)
-            for place in places_6_10:
-                percentages[place] = percent_per_place
-        
-        # 11-20 места: 10% всего
-        places_11_20 = [p for p in range(11, 21) if p <= prize_places]
-        if places_11_20:
-            percent_per_place = 10 / len(places_11_20)
-            for place in places_11_20:
-                percentages[place] = percent_per_place
-        
-        # Создаем распределение
-        for place in range(1, prize_places + 1):
-            percent = percentages.get(place, 0)
-            amount = (prize_pool * percent) / 100
+        # Создаем распределение для PYRAMID
+        for i in range(min(prize_places, len(percentages))):
+            percentage = percentages[i]
+            amount = round(total_pool * (percentage / 100), 2)
+            
             distribution.append({
-                'place': place,
-                'percentage': percent,
-                'amount': round(amount, 2)
+                'place': i + 1,
+                'percentage': percentage,
+                'amount': amount
             })
     
-    else:  # non-linear
-        # Non-linear распределение
-        percentages = {}
+    elif distribution_type == 'nonlinear':
+        # NON-LINEAR стратегия - получаем проценты из второй таблицы
+        if max_players in nonlinear_percentages:
+            percentages = nonlinear_percentages[max_players]
+        else:
+            # Находим ближайшее значение для non-linear
+            available_counts = list(nonlinear_percentages.keys())
+            closest = min(available_counts, key=lambda x: abs(x - max_players))
+            percentages = nonlinear_percentages[closest]
         
-        if prize_places >= 1:
-            percentages[1] = 18  # 1 место: 18%
-        if prize_places >= 2:
-            percentages[2] = 13  # 2 место: 13%
-        if prize_places >= 3:
-            percentages[3] = 10  # 3 место: 10%
-        
-        # 4-10 места: 35% всего
-        places_4_10 = [p for p in range(4, 11) if p <= prize_places]
-        if places_4_10:
-            percent_per_place = 35 / len(places_4_10)
-            for place in places_4_10:
-                percentages[place] = percent_per_place
-        
-        # 11-20 места: 24% всего
-        places_11_20 = [p for p in range(11, 21) if p <= prize_places]
-        if places_11_20:
-            percent_per_place = 24 / len(places_11_20)
-            for place in places_11_20:
-                percentages[place] = percent_per_place
-        
-        # Создаем распределение
-        for place in range(1, prize_places + 1):
-            percent = percentages.get(place, 0)
-            amount = (prize_pool * percent) / 100
+        # Создаем распределение для NON-LINEAR
+        for i in range(min(prize_places, len(percentages))):
+            percentage = percentages[i]
+            amount = round(total_pool * (percentage / 100), 2)
+            
             distribution.append({
-                'place': place,
-                'percentage': percent,
-                'amount': round(amount, 2)
+                'place': i + 1,
+                'percentage': percentage,
+                'amount': amount
             })
     
     return {

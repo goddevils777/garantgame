@@ -179,9 +179,133 @@
                                    style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
                         </div>
                     </div>
+                    <!-- ВЫБОР ТИПА РАСПРЕДЕЛЕНИЯ ПРИЗОВ -->
+                <div class="form-group">
+                    <label for="prize_distribution">Тип распределения призов:</label>
+                    <select id="prize_distribution" name="prize_distribution" required
+                            style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;"
+                            onchange="updatePrizeCalculation()">
+                        <option value="pyramid">🏆 Классическая "Пирамида"</option>
+                        <option value="nonlinear">📊 Non-linear распределение</option>
+                    </select>
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        Выберите как будут распределяться призы между победителями
+                    </small>
                 </div>
-                
+                </div>
+
                 <button type="submit" class="btn">🏆 Создать турнир</button>
+
+<!-- АСИНХРОННЫЙ КАЛЬКУЛЯТОР ПРИЗОВ -->
+                <div id="prizeCalculatorContainer" style="background: #f8f9fa; padding: 25px; border-radius: 15px; border: 2px solid #e9ecef; margin: 30px 0;">
+                    <!-- Только распределение призов -->
+                    <div style="background: white; padding: 20px; border-radius: 10px; border: 1px solid #e9ecef;">
+                        <h4 style="color: #667eea; margin-bottom: 15px; text-align: center;">💰 Распределение призов:</h4>
+                        <div id="prizeDistributionList">
+                            <div style="text-align: center; color: #999; padding: 20px;">
+                                Введите количество участников и стоимость участия для расчета призов
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                // Полная таблица процентов из нашей функции
+                const exactPercentages = {
+                    10: [60.45, 34.55],
+                    11: [60.45, 34.55],
+                    12: [60.46, 34.54],
+                    13: [60.45, 34.55],
+                    14: [60.46, 34.54],
+                    15: [51.15, 29.23, 14.61],
+                    20: [47.5, 27.15, 13.57, 6.79],
+                    25: [44.33, 25.33, 12.67, 6.34, 6.33],
+                    30: [43.18, 24.68, 12.34, 6.17, 6.17, 2.46],
+                    35: [42.09, 24.05, 12.03, 6.01, 6.01, 2.41, 2.41],
+                    40: [41.05, 23.46, 11.73, 5.86, 5.86, 2.35, 2.35, 2.35],
+                    50: [39.12, 22.35, 11.18, 5.59, 5.59, 2.23, 2.24, 2.24, 2.24, 2.24],
+                    60: [38.22, 21.84, 10.92, 5.46, 5.46, 2.18, 2.18, 2.18, 2.18, 2.18, 1.1, 1.09],
+                    70: [37.36, 21.35, 10.67, 5.34, 5.34, 2.13, 2.13, 2.13, 2.13, 2.13, 1.07, 1.07, 1.07, 1.07],
+                    80: [36.54, 20.88, 10.44, 5.22, 5.22, 2.09, 2.09, 2.09, 2.09, 2.09, 1.05, 1.04, 1.04, 1.04, 1.04, 1.04],
+                    90: [35.75, 20.43, 10.22, 5.11, 5.11, 2.04, 2.04, 2.04, 2.04, 2.04, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02],
+                    100: [35, 20, 10, 5, 5, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                };
+
+                function updatePrizeCalculation() {
+                    const maxPlayers = parseInt(document.getElementById('max_players').value) || 0;
+                    const entryFee = parseFloat(document.getElementById('entry_fee').value) || 0;
+                    const distributionType = document.getElementById('prize_distribution').value;
+
+                    // Сброс если нет данных
+                    if (maxPlayers < 10 || maxPlayers > 100 || entryFee <= 0) {
+                        document.getElementById('prizeDistributionList').innerHTML = 
+                            '<div style="text-align: center; color: #999; padding: 20px;">Введите количество участников (10-100) и стоимость участия для расчета призов</div>';
+                        return;
+                    }
+
+                    // Основные расчеты
+                    const totalPool = maxPlayers * entryFee;
+                    const ourCommission = totalPool * 0.05;
+                    const prizePool = totalPool - ourCommission;
+                    const prizePlaces = Math.max(2, Math.floor(maxPlayers * 0.2));
+
+                    // Получаем проценты для данного количества участников
+                    let percentages = exactPercentages[maxPlayers];
+                    if (!percentages) {
+                        // Находим ближайшее значение
+                        const available = Object.keys(exactPercentages).map(Number);
+                        const closest = available.reduce((prev, curr) => 
+                            Math.abs(curr - maxPlayers) < Math.abs(prev - maxPlayers) ? curr : prev
+                        );
+                        percentages = exactPercentages[closest];
+                    }
+
+                    // Создаем заголовок
+                    let prizeHTML = `
+                        <div style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 5px;">
+                                ${maxPlayers} участников, $${entryFee} взнос
+                            </div>
+                            <div style="color: #666; margin-bottom: 8px;">
+                                Общий фонд: $${totalPool.toFixed(2)} | Наша комиссия: $${ourCommission.toFixed(2)} | Призовой фонд: $${prizePool.toFixed(2)}
+                            </div>
+                            <div style="color: #667eea; font-weight: bold;">
+                                Призовых мест: ${prizePlaces} (${Math.round(prizePlaces/maxPlayers*100)}% от участников)
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                    `;
+
+                    // Добавляем призы
+                    for (let i = 0; i < Math.min(prizePlaces, percentages.length); i++) {
+                        const percentage = percentages[i];
+                        const amount = (totalPool * percentage / 100);
+                        
+                        prizeHTML += `
+                            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid ${i < 3 ? '#28a745' : i < 10 ? '#667eea' : '#ffc107'}; text-align: center;">
+                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">${i + 1} место</div>
+                                <div style="font-size: 20px; font-weight: bold; color: #28a745; margin-bottom: 3px;">$${amount.toFixed(2)}</div>
+                                <div style="font-size: 12px; color: #666;">(${percentage}%)</div>
+                            </div>
+                        `;
+                    }
+
+                    prizeHTML += '</div>';
+                    document.getElementById('prizeDistributionList').innerHTML = prizeHTML;
+                }
+
+                // Добавляем обработчики событий на все поля
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.getElementById('max_players').addEventListener('input', updatePrizeCalculation);
+                    document.getElementById('entry_fee').addEventListener('input', updatePrizeCalculation);
+                    document.getElementById('prize_distribution').addEventListener('change', updatePrizeCalculation);
+                    
+                    // Первоначальный расчет
+                    updatePrizeCalculation();
+                });
+                </script>
+                
+                
             </form>
         </div>
     </div>
