@@ -290,13 +290,13 @@
                 {% if user and tournament.current_players < tournament.max_players %}
                     <div style="flex: 1; min-width: 200px; max-width: 300px;">
                         {% if tournament.entry_fee and tournament.entry_fee > 0 %}
-                            <a href="/join/{{ tournament.id }}" 
-                            onclick="return confirm('Участие стоит ${{ tournament.entry_fee }}. Продолжить?')"
+                            <a href="/join_with_balance/{{ tournament.id }}" 
+                            onclick="return confirmPayment({{ tournament.entry_fee }}, {{ user_balance if user_balance else 0 }})"
                             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
-                                💰 Оплатить ${{ tournament.entry_fee }}
+                                💰 Участвовать за ${{ tournament.entry_fee }}
                             </a>
                         {% else %}
-                            <a href="/join/{{ tournament.id }}"
+                            <a href="/join_with_balance/{{ tournament.id }}"
                             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
                                 🎮 Присоединиться бесплатно
                             </a>
@@ -322,13 +322,6 @@
                         <a href="/lobby_codes/{{ tournament.id }}" 
                         style="background: #17a2b8; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
                             🎮 CODE LOBBY
-                        </a>
-                    </div>
-
-                    <div style="flex: 1; min-width: 200px; max-width: 250px;">
-                        <a href="/tournament_results/{{ tournament.id }}" 
-                        style="background: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
-                            🏆 Результаты турнира
                         </a>
                     </div>
                     
@@ -535,6 +528,35 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateCountdown, 1000); // Обновляем каждую секунду
 });
 {% endif %}
+
+</script>
+<script>
+function confirmPayment(entryFee, userBalance) {
+    // Проверяем баланс
+    if (userBalance < entryFee) {
+        const deficit = entryFee - userBalance;
+        const confirmMessage = `❌ Недостаточно средств!\n\n` +
+                              `Требуется: $${entryFee.toFixed(2)}\n` +
+                              `Ваш баланс: $${userBalance.toFixed(2)}\n` +
+                              `Не хватает: $${deficit.toFixed(2)}\n\n` +
+                              `Пополнить баланс?`;
+        
+        if (confirm(confirmMessage)) {
+            window.location.href = '/balance';
+            return false;
+        }
+        return false;
+    }
+    
+    // Подтверждение оплаты
+    const confirmMessage = `💰 Подтвердить участие в турнире?\n\n` +
+                          `Стоимость: $${entryFee.toFixed(2)}\n` +
+                          `Ваш баланс: $${userBalance.toFixed(2)}\n` +
+                          `Останется: $${(userBalance - entryFee).toFixed(2)}\n\n` +
+                          `Продолжить?`;
+    
+    return confirm(confirmMessage);
+}
 </script>
 </body>
 </html>
