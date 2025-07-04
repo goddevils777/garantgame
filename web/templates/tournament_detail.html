@@ -324,6 +324,13 @@
                             🎮 CODE LOBBY
                         </a>
                     </div>
+
+                    <div style="flex: 1; min-width: 200px; max-width: 250px;">
+                        <a href="/tournament_results/{{ tournament.id }}" 
+                        style="background: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
+                            🏆 Результаты турнира
+                        </a>
+                    </div>
                     
                     {% if tournament.tournament_type == 'private' %}
                     <div style="flex: 1; min-width: 180px; max-width: 250px;">
@@ -333,6 +340,8 @@
                         </a>
                     </div>
                     {% endif %}
+
+                    
                     
                     <div style="flex: 1; min-width: 160px; max-width: 200px;">
                         <a href="/delete_tournament/{{ tournament.id }}" 

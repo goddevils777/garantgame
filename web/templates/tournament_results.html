@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты турнира - {{ bot_name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+                 color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .results-table { background: white; border-radius: 15px; overflow: hidden; 
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .table-header { background: #28a745; color: white; padding: 15px; text-align: center; }
+        .player-row { display: grid; grid-template-columns: 60px 1fr 80px 80px 100px 80px; 
+                     padding: 15px; border-bottom: 1px solid #eee; align-items: center; }
+        .player-row:nth-child(even) { background: #f8f9fa; }
+        .place { font-size: 1.2em; font-weight: bold; text-align: center; }
+        .place.winner { color: #28a745; }
+        .match-input { background: #e3f2fd; padding: 20px; border-radius: 15px; 
+                      margin-bottom: 20px; text-align: center; }
+        .btn { background: #28a745; color: white; padding: 12px 30px; border: none; 
+              border-radius: 8px; cursor: pointer; font-size: 16px; margin: 0 10px; }
+        .btn:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Результаты турнира</h1>
+            <h2>{{ tournament.name }}</h2>
+        </div>
+        <div class="match-input">
+            <h3>🎮 Получить результаты матча</h3>
+            
+            <div style="display: flex; gap: 20px; justify-content: center; margin-bottom: 20px;">
+                <!-- АВТОМАТИЧЕСКИЙ ПОИСК -->
+                <form method="POST" action="/tournament_results/{{ tournament.id }}" style="flex: 1; max-width: 400px;">
+                    <input type="hidden" name="search_method" value="auto">
+                    <h4 style="color: #28a745; margin-bottom: 10px;">🤖 Автоматический поиск</h4>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                        Система найдет матч автоматически по участникам турнира
+                    </p>
+                    <button type="submit" class="btn" style="background: #28a745; width: 100%;">
+                        🔍 Найти автоматически
+                    </button>
+                </form>
+                
+                <!-- РУЧНОЙ ПОИСК -->
+                <form method="POST" action="/tournament_results/{{ tournament.id }}" style="flex: 1; max-width: 400px;">
+                    <input type="hidden" name="search_method" value="manual">
+                    <h4 style="color: #667eea; margin-bottom: 10px;">📝 Ручной поиск</h4>
+                    <input type="text" name="match_id" placeholder="Введите Match ID из PUBG" 
+                        style="padding: 10px; width: 100%; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 10px;">
+                    <button type="submit" class="btn" style="background: #667eea; width: 100%;">
+                        📊 Загрузить по ID
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- DEBUG: results = {{ results|length if results else 'None' }} -->
+        {% if results %}
+        <div class="results-table">
+            <div class="table-header">
+                <h3>📋 Результаты матча</h3>
+            </div>
+            <div class="player-row" style="background: #28a745; color: white; font-weight: bold;">
+                <div>Место</div>
+                <div>Игрок</div>
+                <div>Убийства</div>
+                <div>Урон</div>
+                <div>Время</div>
+                <div>Статус</div>
+            </div>
+            
+            {% for player in results %}
+            <div class="player-row">
+                <div class="place {% if loop.index <= tournament.prize_places %}winner{% endif %}">
+                    {{ player.placement }}
+                </div>
+                <div>
+                    <strong>{{ player.player_name }}</strong>
+                    {% if player.site_username %}
+                        <br><small style="color: #666;">Сайт: {{ player.site_username }}</small>
+                    {% endif %}
+                </div>
+                <div>{{ player.kills }}</div>
+                <div>{{ player.damage }}</div>
+                <div>{{ player.survival_time }}</div>
+                <div>
+                    {% if loop.index <= tournament.prize_places %}
+                        <span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 10px; font-size: 12px;">
+                            🏆 ПРИЗЕР
+                        </span>
+                    {% else %}
+                        <span style="color: #666;">Участник</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="/tournament/{{ tournament.id }}" class="btn">← Назад к турниру</a>
+        </div>
+    </div>
+</body>
+</html>

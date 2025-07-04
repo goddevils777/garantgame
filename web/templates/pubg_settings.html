@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUBG настройки - {{ bot_name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+               min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+                    max-width: 500px; width: 90%; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #667eea; font-size: 2.2em; margin-bottom: 10px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
+        .form-input { width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 10px; 
+                     font-size: 16px; text-align: center; }
+        .form-input:focus { border-color: #667eea; outline: none; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; 
+              padding: 15px 30px; border: none; border-radius: 10px; cursor: pointer; 
+              font-size: 16px; width: 100%; margin-top: 10px; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn.secondary { background: #6c757d; }
+        .flash { padding: 15px; margin-bottom: 20px; border-radius: 8px; text-align: center; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info-box { background: #e3f2fd; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 PUBG Настройки</h1>
+            <p>Укажите ваш игровой никнейм</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="info-box">
+            <h4 style="color: #1976d2; margin-bottom: 10px;">ℹ️ Важно!</h4>
+            <p style="color: #666;">Укажите точно такой же никнейм, как в игре PUBG Mobile. Это нужно для автоматического определения ваших результатов в турнирах.</p>
+        </div>
+
+        <form method="POST" action="/pubg_settings">
+            <div class="form-group">
+                <label for="pubg_nickname">PUBG Mobile никнейм:</label>
+                <input type="text" id="pubg_nickname" name="pubg_nickname" 
+                       class="form-input" 
+                       placeholder="Введите ваш игровой ник" 
+                       value="{{ user.pubg_nickname or '' }}"
+                       required>
+            </div>
+            
+            <button type="submit" class="btn">💾 Сохранить никнейм</button>
+            <a href="/" class="btn secondary" style="text-decoration: none; text-align: center; display: block; margin-top: 10px;">
+                ← Назад на главную
+            </a>
+        </form>
+    </div>
+</body>
+</html>

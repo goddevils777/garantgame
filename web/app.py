@@ -13,7 +13,9 @@ from auth import verify_telegram_auth, create_telegram_login_widget
 from database import (create_user_db, get_user_by_telegram_id_db, is_username_taken_db,
                      create_tournament_db, get_tournaments_db, get_tournament_participants,
                      add_tournament_participant, delete_tournament_db, update_tournament_db,
-                     update_tournament_password_db, update_lobby_codes_db, get_tournament_with_lobby_db)
+                     update_tournament_password_db, update_lobby_codes_db, get_tournament_with_lobby_db,
+                     update_user_pubg_nickname, get_tournament_participants_with_pubg,  # ← добавь эту строку
+                     calculate_prize_distribution)  # ← и эту
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'
@@ -838,6 +840,172 @@ def lobby_codes(tournament_id):
     else:
         flash('Ошибка сохранения кодов', 'error')
         return redirect(url_for('lobby_codes_page', tournament_id=tournament_id))
+
+@app.route('/pubg_settings', methods=['GET', 'POST'])
+def pubg_settings():
+    """Настройки PUBG никнейма"""
+    user = session.get('user')
+    if not user or not user.get('profile_created'):
+        flash('Сначала создайте профиль', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'GET':
+        # Получаем текущий PUBG никнейм
+        from database import get_user_by_telegram_id_db
+        user_data = get_user_by_telegram_id_db(int(user['id']))
+        if user_data:
+            user['pubg_nickname'] = user_data.get('pubg_nickname', '')
+        
+        return render_template('pubg_settings.html', user=user, bot_name=BOT_NAME)
+    
+    else:  # POST
+        pubg_nickname = request.form.get('pubg_nickname', '').strip()
+        
+        if not pubg_nickname:
+            flash('Введите PUBG никнейм', 'error')
+            return redirect(url_for('pubg_settings'))
+        
+        if len(pubg_nickname) < 3 or len(pubg_nickname) > 20:
+            flash('PUBG никнейм должен быть от 3 до 20 символов', 'error')
+            return redirect(url_for('pubg_settings'))
+        
+        # Обновляем в базе данных
+        from database import update_user_pubg_nickname
+        success = update_user_pubg_nickname(int(user['id']), pubg_nickname)
+        
+        if success:
+            # Обновляем сессию
+            user['pubg_nickname'] = pubg_nickname
+            session['user'] = user
+            flash(f'PUBG никнейм "{pubg_nickname}" сохранен!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Ошибка сохранения никнейма', 'error')
+            return redirect(url_for('pubg_settings'))
+
+@app.route('/tournament_results/<int:tournament_id>', methods=['GET', 'POST'])
+def tournament_results(tournament_id):
+    """Страница результатов турнира"""
+    user = session.get('user')
+    if not user or not user.get('profile_created'):
+        flash('Сначала создайте профиль', 'error')
+        return redirect(url_for('index'))
+    
+    # Получаем турнир
+    tournament = get_tournament_with_lobby_db(tournament_id)
+    if not tournament:
+        flash('Турнир не найден', 'error')
+        return redirect(url_for('index'))
+    
+    # Проверяем права доступа (только создатель турнира)
+    if tournament['creator'] != user['unique_username']:
+        flash('Только создатель турнира может просматривать результаты', 'error')
+        return redirect(url_for('tournament_detail', tournament_id=tournament_id))
+    
+    results = None
+    
+    if request.method == 'POST':
+        # Проверяем какой метод поиска выбран
+        search_method = request.form.get('search_method', 'manual')
+        
+        if search_method == 'auto':
+            # АВТОМАТИЧЕСКИЙ поиск
+            print("🤖 Запущен автоматический поиск...")
+            
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+                from tournament_match_finder import TournamentMatchFinder
+                print("✅ Импорт TournamentMatchFinder успешен")
+                
+                finder = TournamentMatchFinder()
+                # РЕАЛЬНЫЙ поиск по участникам турнира
+                from database import get_tournament_participants_with_pubg
+                participants = get_tournament_participants_with_pubg(tournament_id)
+
+                # Время начала турнира (можно взять из настроек турнира)
+                from datetime import datetime, timedelta
+                lobby_start = datetime.now() - timedelta(hours=2)  # Ищем матчи за последние 2 часа
+
+                search_result = finder.find_tournament_match_real(participants, lobby_start)
+                
+                if "error" in search_result:
+                    flash(f'Автопоиск не удался: {search_result["error"]}', 'error')
+                else:
+                    # Получаем результаты
+                    results = search_result['results']
+                    print(f"✅ Получены результаты: {len(results)} игроков")
+                    
+                    # Добавляем fake site_username для первых 5 игроков
+                    for i, player in enumerate(results):
+                        if i < 5:
+                            player['site_username'] = f"test_user_{i+1}"
+                        else:
+                            player['site_username'] = None
+                    
+                    # Рассчитываем призы
+                    from database import calculate_prize_distribution
+                    prize_info = calculate_prize_distribution(
+                        tournament['max_players'], 
+                        tournament['entry_fee'], 
+                        tournament.get('prize_distribution_type', 'pyramid')
+                    )
+                    tournament['prize_places'] = prize_info['prize_places']
+                    
+                    flash(f'🤖 ДЕМО: Найдено {len(results)} игроков. Первые 5 помечены как "наши"', 'success')
+                    
+            except Exception as e:
+                print(f"❌ Ошибка автопоиска: {e}")
+                flash(f'Ошибка автопоиска: {str(e)}', 'error')
+        
+        else:
+            # РУЧНОЙ поиск (существующий код)
+            match_id = request.form.get('match_id', '').strip()
+            
+            if not match_id:
+                flash('Введите Match ID', 'error')
+            else:
+                # Получаем результаты матча
+                sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+                from pubg_integration import PUBGMatchTracker
+                tracker = PUBGMatchTracker()
+                match_results = tracker.get_match_results(match_id)
+                
+                if "error" in match_results:
+                    flash(f'Ошибка получения данных: {match_results["error"]}', 'error')
+                else:
+                    # Получаем участников турнира с PUBG никнеймами
+                    from database import get_tournament_participants_with_pubg
+                    participants = get_tournament_participants_with_pubg(tournament_id)
+                    
+                    # Создаем словарь для сопоставления PUBG ник -> ник на сайте
+                    pubg_to_site = {}
+                    for participant in participants:
+                        if participant['pubg_nickname']:
+                            pubg_to_site[participant['pubg_nickname']] = participant['username']
+                    
+                    # Обогащаем результаты
+                    for player in match_results['results']:
+                        player['site_username'] = pubg_to_site.get(player['player_name'], None)
+                    
+                    results = match_results['results']
+                    
+                    # Добавляем количество призовых мест в турнир
+                    from database import calculate_prize_distribution
+                    prize_info = calculate_prize_distribution(
+                        tournament['max_players'], 
+                        tournament['entry_fee'], 
+                        tournament.get('prize_distribution_type', 'pyramid')
+                    )
+                    tournament['prize_places'] = prize_info['prize_places']
+                    
+                    flash(f'Результаты загружены! Найдено {len(results)} игроков', 'success')
+
+    print(f"🔍 DEBUG: Передаем в шаблон results = {len(results) if results else 'None'}")
+    return render_template('tournament_results.html', 
+                         tournament=tournament, 
+                         results=results, 
+                         bot_name=BOT_NAME, 
+                         user=user)
 
 if __name__ == '__main__':
     print(f"🌐 Веб-интерфейс {BOT_NAME} запущен!")

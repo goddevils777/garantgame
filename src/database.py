@@ -439,6 +439,12 @@ def init_database():
                 joined_tournaments INTEGER DEFAULT 0
             )
         ''')
+
+        # Добавляем поле для PUBG никнейма
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN pubg_nickname TEXT DEFAULT ""')
+        except sqlite3.OperationalError:
+            pass  # Поле уже существует
         
         # Добавляем новые столбцы к существующей таблице пользователей
         try:
@@ -511,6 +517,8 @@ def init_database():
         conn.rollback()
     finally:
         conn.close()
+
+
 
 def calculate_prize_distribution(max_players, entry_fee, distribution_type='pyramid'):
     """Рассчитать распределение призов по ТОЧНОЙ таблице 1 в 1"""
@@ -613,6 +621,50 @@ def calculate_prize_distribution(max_players, entry_fee, distribution_type='pyra
         'distribution': distribution,
         'prize_places': prize_places
     }
+
+def update_user_pubg_nickname(telegram_id, pubg_nickname):
+    """Обновить PUBG никнейм пользователя"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            UPDATE users 
+            SET pubg_nickname = ?
+            WHERE telegram_id = ?
+        ''', (pubg_nickname, telegram_id))
+        
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Ошибка обновления PUBG никнейма: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_tournament_participants_with_pubg(tournament_id):
+    """Получить участников турнира с их PUBG никнеймами"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT tp.username, tp.joined_at, u.pubg_nickname
+        FROM tournament_participants tp
+        JOIN users u ON tp.username = u.unique_username
+        WHERE tp.tournament_id = ?
+        ORDER BY tp.joined_at ASC
+    ''', (tournament_id,))
+    
+    participants = []
+    for row in cursor.fetchall():
+        participants.append({
+            'username': row[0],
+            'joined_at': row[1],
+            'pubg_nickname': row[2] if row[2] else ''
+        })
+    
+    conn.close()
+    return participants
 
 # Инициализация базы данных при импорте
 if __name__ == "__main__":

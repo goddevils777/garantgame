@@ -1,86 +1,124 @@
 import requests
 import json
+import sys
+import os
 
-def check_pubg_apis():
-    """Проверка доступных PUBG API"""
-    print("🔍 Проверяем реальные API для PUBG Mobile...\n")
+# Добавляем путь к config
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from config.settings import PUBG_API_KEY
+
+class PUBGAPIClient:
+    def __init__(self):
+        self.api_key = PUBG_API_KEY
+        self.base_url = "https://api.pubg.com"
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Accept": "application/vnd.api+json"
+        }
     
-    # 1. Официальный PUBG API (проверим поддержку Mobile)
-    print("1. 🏢 Официальный PUBG API:")
-    try:
-        response = requests.get("https://api.pubg.com/status", timeout=5)
-        print(f"   Статус: {response.status_code}")
-        if response.status_code == 200:
-            print("   ✅ API доступен (но нужен ключ)")
-        else:
-            print("   ❌ API недоступен")
-    except:
-        print("   ❌ Не удалось подключиться")
-    
-    # 2. PUBG Tracker API
-    print("\n2. 📊 PUBG Tracker API:")
-    try:
-        # Тестовый запрос без ключа
-        response = requests.get("https://api.tracker.gg/api/v2/pubg-mobile/", timeout=5)
-        print(f"   Статус: {response.status_code}")
-        if response.status_code == 401:
-            print("   🔑 Требует API ключ, но API работает")
-        elif response.status_code == 200:
-            print("   ✅ API доступен")
-    except:
-        print("   ❌ Не удалось подключиться")
-    
-    # 3. Проверим другие варианты
-    print("\n3. 🔎 Другие варианты:")
-    
-    # Список игроков для тестирования (без реальных запросов)
-    test_endpoints = [
-        "https://chicken-dinner.com/api/",
-        "https://pubgop.gg/api/",
-        "https://www.op.gg/api/pubgm/"
-    ]
-    
-    for endpoint in test_endpoints:
+    def test_connection(self):
+        """Тест подключения к API"""
+        print("🔑 Тестируем API ключ...")
         try:
-            response = requests.head(endpoint, timeout=3)
-            print(f"   📋 {endpoint}: статус {response.status_code}")
-        except:
-            print(f"   ❌ {endpoint}: недоступен")
+            response = requests.get(f"{self.base_url}/status", headers=self.headers)
+            print(f"📊 Статус ответа: {response.status_code}")
+            
+            if response.status_code == 200:
+                print("✅ API ключ работает отлично!")
+                print("📈 Лимит: 10 запросов/минуту = 14,400/день")
+                print("💡 Этого хватит на тысячи турниров!")
+                return True
+            else:
+                print(f"❌ Ошибка: {response.text}")
+                return False
+        except Exception as e:
+            print(f"❌ Ошибка подключения: {e}")
+            return False
 
-def test_pubg_mobile_data_format():
-    """Тестируем какие данные нужны для турнира"""
-    print("\n" + "="*50)
-    print("📋 КАКИЕ ДАННЫЕ НУЖНЫ ДЛЯ ТУРНИРА:")
-    print()
-    
-    # Структура данных которые мы хотим получить
-    tournament_data = {
-        "tournament_id": "TOUR_123",
-        "lobby_id": "ROOM123456", 
-        "lobby_code": "PASS789",
-        "match_results": [
-            {
-                "player_name": "PlayerName",
-                "placement": 1,
-                "kills": 8,
-                "damage": 1250.5,
-                "survival_time": "25:30"
-            }
-        ]
-    }
-    
-    print("Нужные данные:")
-    print("✅ ID лобби (у нас есть)")
-    print("✅ Код лобби (у нас есть)")
-    print("❓ Результаты матча:")
-    print("   - Место каждого игрока (1-100)")
-    print("   - Количество убийств")
-    print("   - Нанесенный урон")
-    print("   - Время выживания")
-    print()
-    print("📝 Пример структуры данных:")
-    print(json.dumps(tournament_data, indent=2, ensure_ascii=False))
+    def explore_api_endpoints(self):
+        """Изучаем что доступно в PUBG API"""
+        print("\n🔍 Изучаем доступные платформы и регионы...")
+        
+        platforms = ['steam', 'xbox', 'psn', 'kakao', 'stadia', 'tournament']
+        
+        for platform in platforms:
+            try:
+                url = f"{self.base_url}/shards/{platform}/players"
+                response = requests.get(url, headers=self.headers, params={'filter[playerNames]': 'test'})
+                print(f"📱 Платформа {platform}: статус {response.status_code}")
+                
+                if response.status_code == 404:
+                    print(f"   ❌ {platform} не поддерживается")
+                elif response.status_code == 400:
+                    print(f"   ✅ {platform} доступна (плохой запрос - это нормально)")
+                elif response.status_code == 200:
+                    print(f"   ✅ {platform} полностью доступна")
+                    
+            except Exception as e:
+                print(f"   ❌ Ошибка проверки {platform}: {e}")
+
+    def check_tournament_platform(self):
+        """Проверяем турнирную платформу"""
+        print("\n🏆 Проверяем турнирную платформу...")
+        
+        try:
+            url = f"{self.base_url}/tournaments"
+            response = requests.get(url, headers=self.headers)
+            print(f"📊 Турниры: статус {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                print("✅ Турнирные данные доступны!")
+                print(f"📋 Структура: {list(data.keys())}")
+            elif response.status_code == 404:
+                print("❌ Турнирные данные недоступны")
+            else:
+                print(f"⚠️ Неожиданный ответ: {response.text[:200]}")
+                
+        except Exception as e:
+            print(f"❌ Ошибка: {e}")
+
+    def explore_tournament_data(self):
+            """Изучаем структуру турнирных данных"""
+            print("\n📋 Изучаем турнирные данные подробно...")
+            
+            try:
+                url = f"{self.base_url}/tournaments"
+                response = requests.get(url, headers=self.headers)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    print(f"📊 Найдено турниров: {len(data.get('data', []))}")
+                    
+                    if data.get('data'):
+                        # Смотрим первый турнир
+                        first_tournament = data['data'][0]
+                        print(f"🏆 Первый турнир:")
+                        print(f"   ID: {first_tournament.get('id')}")
+                        print(f"   Тип: {first_tournament.get('type')}")
+                        
+                        # Смотрим атрибуты
+                        attrs = first_tournament.get('attributes', {})
+                        print(f"   📋 Атрибуты: {list(attrs.keys())}")
+                        
+                        # Ищем игру
+                        if 'gameMode' in attrs:
+                            print(f"   🎮 Режим игры: {attrs['gameMode']}")
+                        
+                        # Смотрим связи
+                        relationships = first_tournament.get('relationships', {})
+                        print(f"   🔗 Связи: {list(relationships.keys())}")
+                        
+                    else:
+                        print("📭 Активных турниров не найдено")
+                        
+            except Exception as e:
+                print(f"❌ Ошибка: {e}")
 
 if __name__ == "__main__":
-    check_pubg_apis()
-    test_pubg_mobile_data_format()
+    client = PUBGAPIClient()
+    if client.test_connection():
+        client.explore_api_endpoints()
+        client.check_tournament_platform()
+        client.explore_tournament_data()
