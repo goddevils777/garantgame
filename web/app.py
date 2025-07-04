@@ -21,6 +21,62 @@ app.secret_key = 'your-secret-key-here'
 # Получаем username бота для виджета
 BOT_USERNAME = "garantgameproject_bot"  # ЗАМЕНИ НА РЕАЛЬНЫЙ USERNAME БОТА
 
+def send_lobby_codes_notifications(tournament_id, tournament_name, lobby_id, lobby_code):
+    """Отправка уведомлений о кодах лобби всем участникам"""
+    try:
+        import requests
+        from config.settings import BOT_TOKEN
+        
+        # Получаем участников
+        participants = get_tournament_participants(tournament_id)
+        
+        for participant in participants:
+            # Получаем пользователя по username
+            import sqlite3
+            DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'garantgame.db')
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT telegram_id FROM users WHERE unique_username = ?', (participant['username'],))
+            result = cursor.fetchone()
+            conn.close()
+            
+            if not result:
+                print(f"❌ Не найден telegram_id для {participant['username']}")
+                continue
+                
+            telegram_id = result[0]
+            
+            codes_text = ""
+            if lobby_id:
+                codes_text += f"🆔 <b>ID Лобби:</b> <code>{lobby_id}</code>\n"
+            if lobby_code:
+                codes_text += f"🔑 <b>Код Лобби:</b> <code>{lobby_code}</code>\n"
+            
+            message = f"""🎮 <b>КОДЫ ЛОББИ ВЫДАНЫ!</b>
+
+🏆 Турнир: <b>{tournament_name}</b>
+
+{codes_text}
+Заходите в игру! Удачи! 🍀"""
+            
+            # Отправляем уведомление
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+            data = {
+                'chat_id': telegram_id,
+                'text': message,
+                'parse_mode': 'HTML'
+            }
+            
+            response = requests.post(url, data=data)
+            if response.status_code == 200:
+                print(f"✅ Коды лобби отправлены участнику: {participant['username']}")
+            else:
+                print(f"❌ Ошибка отправки для {participant['username']}")
+            
+    except Exception as e:
+        print(f"Ошибка отправки уведомлений о кодах: {e}")
+
 @app.route('/')
 def index():
     """Главная страница"""
@@ -244,6 +300,7 @@ def create_tournament():
     tournament_password = request.form.get('tournament_password')
     start_date = request.form.get('start_date')
     start_time = request.form.get('start_time')
+    prize_distribution_type = request.form.get('prize_distribution_type', 'pyramid')
     
     # Валидация
     if not tournament_name:
@@ -295,7 +352,8 @@ def create_tournament():
         start_time=start_time,
         entry_fee=entry_fee,
         tournament_type=tournament_type,
-        tournament_password=tournament_password if tournament_type == 'private' else None
+        tournament_password=tournament_password if tournament_type == 'private' else None,
+        prize_distribution_type=prize_distribution_type  # ← ДОБАВЬ ЭТУ СТРОКУ
     )
     
     if tournament_id:
@@ -323,6 +381,21 @@ def private_tournaments():
     telegram_widget = create_telegram_login_widget(BOT_USERNAME)
     
     return render_template('private_tournaments.html', tournaments=private_tournaments, 
+                         bot_name=BOT_NAME, user=user, telegram_widget=telegram_widget)
+
+@app.route('/public_tournaments')
+def public_tournaments():
+    """Страница всех турниров (публичных и приватных)"""
+    user = session.get('user')
+    if not user or not user.get('profile_created'):
+        return redirect(url_for('index'))
+    
+    # Получаем ВСЕ турниры (и публичные, и приватные)
+    all_tournaments = get_tournaments_db()
+    
+    telegram_widget = create_telegram_login_widget(BOT_USERNAME)
+    
+    return render_template('public_tournaments.html', tournaments=all_tournaments, 
                          bot_name=BOT_NAME, user=user, telegram_widget=telegram_widget)
 
 @app.route('/join/<int:tournament_id>')
@@ -752,10 +825,12 @@ def lobby_codes(tournament_id):
     
     # Обновляем коды в базе данных
     success = update_lobby_codes_db(tournament_id, lobby_id or None, lobby_code or None)
-    
+
     if success:
         participants_count = len(get_tournament_participants(tournament_id))
         if participants_count > 0:
+            # ОТПРАВЛЯЕМ УВЕДОМЛЕНИЯ О КОДАХ ЛОББИ
+            send_lobby_codes_notifications(tournament_id, tournament['name'], lobby_id, lobby_code)
             flash(f'Коды лобби сохранены и разосланы {participants_count} участникам!', 'success')
         else:
             flash('Коды лобби сохранены (участников пока нет)', 'success')

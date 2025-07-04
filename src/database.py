@@ -170,16 +170,16 @@ def is_username_taken_db(username):
     
     return count > 0
 
-def create_tournament_db(name, min_players, max_players, creator_username, start_date, start_time, entry_fee, tournament_type, tournament_password=None):
+def create_tournament_db(name, min_players, max_players, creator_username, start_date, start_time, entry_fee, tournament_type, tournament_password=None, prize_distribution_type='pyramid'):
     """Создать турнир в базе данных"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
         INSERT INTO tournaments (name, min_players, max_players, creator_username, 
-                               start_date, start_time, entry_fee, tournament_type, tournament_password)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (name, min_players, max_players, creator_username, start_date, start_time, entry_fee, tournament_type, tournament_password))
+                            start_date, start_time, entry_fee, tournament_type, tournament_password, prize_distribution_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (name, min_players, max_players, creator_username, start_date, start_time, entry_fee, tournament_type, tournament_password, prize_distribution_type))
     
     tournament_id = cursor.lastrowid
     conn.commit()
@@ -196,8 +196,9 @@ def get_tournaments_db(tournament_type=None, user_username=None):
         # Для авторизованных пользователей - показать ВСЕ турниры (публичные + все приватные)
         cursor.execute('''
             SELECT id, name, min_players, max_players, status, 
-                   creator_username, start_date, start_time, entry_fee, 
-                   prize_pool, tournament_type, tournament_password, created_at
+                creator_username, start_date, start_time, entry_fee, 
+                prize_pool, tournament_type, tournament_password, 
+                prize_distribution_type, created_at
             FROM tournaments 
             ORDER BY created_at DESC
         ''')
@@ -205,8 +206,9 @@ def get_tournaments_db(tournament_type=None, user_username=None):
         # Для неавторизованных - только публичные
         cursor.execute('''
             SELECT id, name, min_players, max_players, status, 
-                   creator_username, start_date, start_time, entry_fee, 
-                   prize_pool, tournament_type, tournament_password, created_at
+                creator_username, start_date, start_time, entry_fee, 
+                prize_pool, tournament_type, tournament_password,
+                prize_distribution_type, created_at
             FROM tournaments 
             WHERE tournament_type = 'public'
             ORDER BY created_at DESC
@@ -215,8 +217,9 @@ def get_tournaments_db(tournament_type=None, user_username=None):
         # ВСЕ турниры (включая приватные с паролем)
         cursor.execute('''
             SELECT id, name, min_players, max_players, status, 
-                   creator_username, start_date, start_time, entry_fee, 
-                   prize_pool, tournament_type, tournament_password, created_at
+                creator_username, start_date, start_time, entry_fee, 
+                prize_pool, tournament_type, tournament_password,
+                prize_distribution_type, created_at
             FROM tournaments 
             ORDER BY created_at DESC
         ''')
@@ -230,19 +233,20 @@ def get_tournaments_db(tournament_type=None, user_username=None):
         participants_count = cursor.fetchone()[0]
         
         tournaments.append({
-            'id': int(row[0]),                                    # 0
-            'name': str(row[1]),                                  # 1
-            'min_players': int(row[2]),                           # 2
-            'max_players': int(row[3]),                           # 3
-            'status': str(row[4]),                                # 4
-            'creator': str(row[5]),                               # 5
-            'start_date': str(row[6]) if row[6] else None,        # 6
-            'start_time': str(row[7]) if row[7] else None,        # 7
-            'entry_fee': float(row[8]) if row[8] else 0.0,        # 8
-            'prize_pool': float(row[9]) if row[9] else 0.0,       # 9
-            'tournament_type': str(row[10]),                      # 10
-            'tournament_password': str(row[11]) if row[11] else None,  # 11
-            'created_at': str(row[12]) if row[12] else None,      # 12
+            'id': int(row[0]),
+            'name': str(row[1]),
+            'min_players': int(row[2]),
+            'max_players': int(row[3]),
+            'status': str(row[4]),
+            'creator': str(row[5]),
+            'start_date': str(row[6]) if row[6] else None,
+            'start_time': str(row[7]) if row[7] else None,
+            'entry_fee': float(row[8]) if row[8] else 0.0,
+            'prize_pool': float(row[9]) if row[9] else 0.0,
+            'tournament_type': str(row[10]),
+            'tournament_password': str(row[11]) if row[11] else None,
+            'prize_distribution_type': str(row[12]) if row[12] else 'pyramid',
+            'created_at': str(row[13]) if row[13] else None,
             'current_players': int(participants_count),
             'participants': []
         })
@@ -379,9 +383,9 @@ def get_tournament_with_lobby_db(tournament_id):
     
     cursor.execute('''
         SELECT id, name, min_players, max_players, status, 
-               creator_username, start_date, start_time, entry_fee, 
-               prize_pool, tournament_type, tournament_password, 
-               lobby_id, lobby_code, created_at
+            creator_username, start_date, start_time, entry_fee, 
+            prize_pool, tournament_type, tournament_password, 
+            lobby_id, lobby_code, prize_distribution_type, created_at
         FROM tournaments 
         WHERE id = ?
     ''', (tournament_id,))
@@ -393,25 +397,26 @@ def get_tournament_with_lobby_db(tournament_id):
         # Получаем количество участников
         participants_count = len(get_tournament_participants(tournament_id))
         
-        return {
-            'id': int(row[0]),
-            'name': str(row[1]),
-            'min_players': int(row[2]),
-            'max_players': int(row[3]),
-            'status': str(row[4]),
-            'creator': str(row[5]),
-            'start_date': str(row[6]) if row[6] else None,
-            'start_time': str(row[7]) if row[7] else None,
-            'entry_fee': float(row[8]) if row[8] else 0.0,
-            'prize_pool': float(row[9]) if row[9] else 0.0,
-            'tournament_type': str(row[10]),
-            'tournament_password': str(row[11]) if row[11] else None,
-            'lobby_id': str(row[12]) if row[12] else None,
-            'lobby_code': str(row[13]) if row[13] else None,
-            'created_at': str(row[14]) if row[14] else None,
-            'current_players': participants_count,
-            'participants': []
-        }
+    return {
+        'id': int(row[0]),
+        'name': str(row[1]),
+        'min_players': int(row[2]),
+        'max_players': int(row[3]),
+        'status': str(row[4]),
+        'creator': str(row[5]),
+        'start_date': str(row[6]) if row[6] else None,
+        'start_time': str(row[7]) if row[7] else None,
+        'entry_fee': float(row[8]) if row[8] else 0.0,
+        'prize_pool': float(row[9]) if row[9] else 0.0,
+        'tournament_type': str(row[10]),
+        'tournament_password': str(row[11]) if row[11] else None,
+        'lobby_id': str(row[12]) if row[12] else None,
+        'lobby_code': str(row[13]) if row[13] else None,
+        'prize_distribution_type': str(row[14]) if row[14] else 'pyramid',  # ← ДОБАВЬ ЭТУ СТРОКУ
+        'created_at': str(row[15]) if row[15] else None,  # ← ОБРАТИ ВНИМАНИЕ: индекс увеличился на 1
+        'current_players': participants_count,
+        'participants': []
+    }
     return None
 
 def init_database():

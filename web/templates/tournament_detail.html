@@ -77,6 +77,29 @@
             {% endif %}
         </div>
 
+        <!-- НАВИГАЦИОННЫЕ КНОПКИ -->
+        {% if user and user.profile_created %}
+        <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <a href="/create_tournament_page" class="nav-btn"
+                style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                        background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                    📝 Создать турнир
+                </a>
+                <a href="/" class="nav-btn"
+                style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                        background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                    🏠 Мои турниры
+                </a>
+                <a href="/public_tournaments" class="nav-btn"
+                style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                        background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                    🌐 Общие турниры
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -127,23 +150,49 @@
                 </div>
                 {% endif %}
 
-                {% if tournament.lobby_id or tournament.lobby_code %}
-                <div class="info-item" style="grid-column: 1 / -1;">
-                    <h3>🎮 Коды игрового лобби</h3>
-                    {% if tournament.lobby_id %}
-                        <p><strong>ID Лобби:</strong> <span style="font-family: monospace; background: #e9ecef; padding: 5px 10px; border-radius: 5px; font-weight: bold;">{{ tournament.lobby_id }}</span></p>
-                    {% endif %}
-                    {% if tournament.lobby_code %}
-                        <p><strong>Код Лобби:</strong> <span style="font-family: monospace; background: #e9ecef; padding: 5px 10px; border-radius: 5px; font-weight: bold;">{{ tournament.lobby_code }}</span></p>
+            {% if tournament.lobby_id or tournament.lobby_code %}
+            <div class="info-item" style="grid-column: 1 / -1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>🎮 Коды игрового лобби</h3>
+                        {% if tournament.lobby_id %}
+                            <p><strong>ID Лобби:</strong> <span style="font-family: monospace; background: #e9ecef; padding: 5px 10px; border-radius: 5px; font-weight: bold;">{{ tournament.lobby_id }}</span></p>
+                        {% endif %}
+                        {% if tournament.lobby_code %}
+                            <p><strong>Код Лобби:</strong> <span style="font-family: monospace; background: #e9ecef; padding: 5px 10px; border-radius: 5px; font-weight: bold;">{{ tournament.lobby_code }}</span></p>
+                        {% endif %}
+                    </div>
+                    
+                    {% if tournament.start_date and tournament.start_time %}
+                    <div style="flex: 0 0 auto; min-width: 200px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px; text-align: center;">⏰ До начала:</h4>
+                        <div id="countdown" style="background: #667eea; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold;">
+                            <div id="countdown-display">Загрузка...</div>
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
-                {% elif user and tournament.current_players > 0 %}
-                <div class="info-item" style="grid-column: 1 / -1;">
-                    <h3>🎮 Коды игрового лобби</h3>
-                    <p style="color: #ffc107; font-weight: bold;">⏳ Коды лобби пока не выданы</p>
-                    <p style="color: #666; font-size: 14px;">Создатель турнира обычно выдает коды за 15-20 минут до начала игры</p>
+            </div>
+            {% elif user and tournament.current_players > 0 %}
+            <div class="info-item" style="grid-column: 1 / -1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>🎮 Коды игрового лобби</h3>
+                        <p style="color: #ffc107; font-weight: bold;">⏳ Коды лобби пока не выданы</p>
+                        <p style="color: #666; font-size: 14px;">Создатель турнира обычно выдает коды за 15-20 минут до начала игры</p>
+                    </div>
+                    
+                    {% if tournament.start_date and tournament.start_time %}
+                    <div style="flex: 0 0 auto; min-width: 200px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px; text-align: center;">⏰ До начала:</h4>
+                        <div id="countdown" style="background: #667eea; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold;">
+                            <div id="countdown-display">Загрузка...</div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
+            </div>
+            {% endif %}
                 
                 <div class="info-item">
                     <h3>📈 Статус</h3>
@@ -164,6 +213,18 @@
                         <p>🌐 Публичный турнир</p>
                     {% endif %}
                 </div>
+
+                <div class="info-item">
+                    <h3>📊 Тип распределения</h3>
+                    {% if tournament.prize_distribution_type == 'nonlinear' %}
+                        <p>📊 Non-linear распределение</p>
+                        <small style="color: #666;">Более равномерное распределение призов</small>
+                    {% else %}
+                        <p>🏆 Классическая пирамида</p>
+                        <small style="color: #666;">Большие призы для топовых мест</small>
+                    {% endif %}
+                </div>                
+
             </div>
             
 
@@ -188,47 +249,98 @@
                 </div>
             {% endif %}
 
-            <div class="actions">
+            {% if user and user.unique_username == tournament.creator and tournament.tournament_type == 'private' %}
+            <div style="background: #e3f2fd; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid #2196f3;">
+                <h3 style="color: #1976d2; margin-bottom: 15px;">📤 Поделиться турниром</h3>
+                <p style="color: #666; margin-bottom: 15px;">Отправьте эту ссылку и пароль своим друзьям:</p>
+                
+                <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                    <strong>Ссылка:</strong>
+                    <div style="font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 5px 0; word-break: break-all;">
+                        {{ request.url_root }}tournament/{{ tournament.id }}
+                    </div>
+                    <button onclick="copyToClipboard('{{ request.url_root }}tournament/{{ tournament.id }}')" 
+                            style="background: #2196f3; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">
+                        📋 Скопировать ссылку
+                    </button>
+                </div>
+                
+                <div style="background: white; padding: 15px; border-radius: 10px;">
+                    <strong>Пароль для входа:</strong>
+                    <div style="font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 5px 0; font-size: 18px; font-weight: bold; text-align: center;">
+                        {{ tournament.tournament_password }}
+                    </div>
+                    <button onclick="copyToClipboard('{{ tournament.tournament_password }}')" 
+                            style="background: #4caf50; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">
+                        📋 Скопировать пароль
+                    </button>
+                </div>
+            </div>
+
+            <script>
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(function() {
+                    alert('Скопировано в буфер обмена!');
+                });
+            }
+            </script>
+            {% endif %}
+
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; justify-content: center;">
                 {% if user and tournament.current_players < tournament.max_players %}
-                    {% if tournament.entry_fee and tournament.entry_fee > 0 %}
-                        <a href="/join/{{ tournament.id }}" class="btn" 
-                           onclick="return confirm('Участие стоит ${{ tournament.entry_fee }}. Продолжить?')">
-                            💰 Оплатить ${{ tournament.entry_fee }}
-                        </a>
-                    {% else %}
-                        <a href="/join/{{ tournament.id }}" class="btn">
-                            🎮 Присоединиться бесплатно
-                        </a>
-                    {% endif %}
+                    <div style="flex: 1; min-width: 200px; max-width: 300px;">
+                        {% if tournament.entry_fee and tournament.entry_fee > 0 %}
+                            <a href="/join/{{ tournament.id }}" 
+                            onclick="return confirm('Участие стоит ${{ tournament.entry_fee }}. Продолжить?')"
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
+                                💰 Оплатить ${{ tournament.entry_fee }}
+                            </a>
+                        {% else %}
+                            <a href="/join/{{ tournament.id }}"
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
+                                🎮 Присоединиться бесплатно
+                            </a>
+                        {% endif %}
+                    </div>
                 {% elif tournament.current_players >= tournament.max_players %}
-                    <span class="btn" style="background: #6c757d; cursor: default;">
-                        🚫 Турнир полный
-                    </span>
+                    <div style="flex: 1; min-width: 200px;">
+                        <span style="background: #6c757d; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; display: block; text-align: center; cursor: default;">
+                            🚫 Турнир полный
+                        </span>
+                    </div>
                 {% endif %}
                 
                 {% if user and user.unique_username == tournament.creator %}
-                    <a href="/edit_tournament/{{ tournament.id }}" class="btn" 
-                       style="background: #28a745;">
-                        ✏️ Редактировать
-                    </a>
+                    <div style="flex: 1; min-width: 180px; max-width: 250px;">
+                        <a href="/edit_tournament/{{ tournament.id }}" 
+                        style="background: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
+                            ✏️ Редактировать
+                        </a>
+                    </div>
                     
-                    <a href="/lobby_codes/{{ tournament.id }}" class="btn" 
-                       style="background: #17a2b8;">
-                        🎮 Разослать CODE LOBBY
-                    </a>
+                    <div style="flex: 1; min-width: 200px; max-width: 250px;">
+                        <a href="/lobby_codes/{{ tournament.id }}" 
+                        style="background: #17a2b8; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
+                            🎮 CODE LOBBY
+                        </a>
+                    </div>
                     
                     {% if tournament.tournament_type == 'private' %}
-                    <a href="/change_password/{{ tournament.id }}" class="btn" 
-                       style="background: #ffc107; color: #212529;">
-                        🔑 Сменить пароль
-                    </a>
+                    <div style="flex: 1; min-width: 180px; max-width: 250px;">
+                        <a href="/change_password/{{ tournament.id }}" 
+                        style="background: #ffc107; color: #212529; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
+                            🔑 Сменить пароль
+                        </a>
+                    </div>
                     {% endif %}
                     
-                    <a href="/delete_tournament/{{ tournament.id }}" class="btn" 
-                       style="background: #dc3545;"
-                       onclick="return confirm('Вы уверены, что хотите удалить турнир?')">
-                        🗑️ Удалить турнир
-                    </a>
+                    <div style="flex: 1; min-width: 160px; max-width: 200px;">
+                        <a href="/delete_tournament/{{ tournament.id }}" 
+                        onclick="return confirm('Вы уверены, что хотите удалить турнир?')"
+                        style="background: #dc3545; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;">
+                            🗑️ Удалить
+                        </a>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -261,26 +373,43 @@
         </div>
     </div>
     <script>
-// Полная таблица процентов
-const detailPercentages = {
-    10: [60.45, 34.55],
-    11: [60.45, 34.55],
-    12: [60.46, 34.54],
-    15: [51.15, 29.23, 14.61],
-    20: [47.5, 27.15, 13.57, 6.79],
-    25: [44.33, 25.33, 12.67, 6.34, 6.33],
-    30: [43.18, 24.68, 12.34, 6.17, 6.17, 2.46],
-    35: [42.09, 24.05, 12.03, 6.01, 6.01, 2.41, 2.41],
-    40: [41.05, 23.46, 11.73, 5.86, 5.86, 2.35, 2.35, 2.35],
-    50: [39.12, 22.35, 11.18, 5.59, 5.59, 2.23, 2.24, 2.24, 2.24, 2.24],
-    60: [38.22, 21.84, 10.92, 5.46, 5.46, 2.18, 2.18, 2.18, 2.18, 2.18, 1.1, 1.09],
-    70: [37.36, 21.35, 10.67, 5.34, 5.34, 2.13, 2.13, 2.13, 2.13, 2.13, 1.07, 1.07, 1.07, 1.07],
-    80: [36.54, 20.88, 10.44, 5.22, 5.22, 2.09, 2.09, 2.09, 2.09, 2.09, 1.05, 1.04, 1.04, 1.04, 1.04, 1.04],
-    90: [35.75, 20.43, 10.22, 5.11, 5.11, 2.04, 2.04, 2.04, 2.04, 2.04, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02],
-    100: [35, 20, 10, 5, 5, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-};
+        // Полная таблица процентов
+        const detailPercentages = {
+            10: [60.45, 34.55],
+            11: [60.45, 34.55],
+            12: [60.46, 34.54],
+            15: [51.15, 29.23, 14.61],
+            20: [47.5, 27.15, 13.57, 6.79],
+            25: [44.33, 25.33, 12.67, 6.34, 6.33],
+            30: [43.18, 24.68, 12.34, 6.17, 6.17, 2.46],
+            35: [42.09, 24.05, 12.03, 6.01, 6.01, 2.41, 2.41],
+            40: [41.05, 23.46, 11.73, 5.86, 5.86, 2.35, 2.35, 2.35],
+            50: [39.12, 22.35, 11.18, 5.59, 5.59, 2.23, 2.24, 2.24, 2.24, 2.24],
+            60: [38.22, 21.84, 10.92, 5.46, 5.46, 2.18, 2.18, 2.18, 2.18, 2.18, 1.1, 1.09],
+            70: [37.36, 21.35, 10.67, 5.34, 5.34, 2.13, 2.13, 2.13, 2.13, 2.13, 1.07, 1.07, 1.07, 1.07],
+            80: [36.54, 20.88, 10.44, 5.22, 5.22, 2.09, 2.09, 2.09, 2.09, 2.09, 1.05, 1.04, 1.04, 1.04, 1.04, 1.04],
+            90: [35.75, 20.43, 10.22, 5.11, 5.11, 2.04, 2.04, 2.04, 2.04, 2.04, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 1.02],
+            100: [35, 20, 10, 5, 5, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        };
 
-function calculateDetailPrizes(participants, entryFee, isMax = false) {
+        // Добавь после exactPercentages
+        const nonlinearPercentages = {
+            10: [55.16, 39.84],
+            15: [41.71, 30.12, 23.17],
+            20: [35.62, 25.73, 19.79, 13.86],
+            25: [31.38, 22.66, 17.43, 12.2, 11.33],
+            30: [28.26, 20.41, 15.7, 10.99, 10.21, 9.42],
+            35: [25.91, 18.71, 14.39, 10.08, 9.36, 8.64, 7.92],
+            40: [24.09, 17.39, 13.38, 9.37, 8.7, 8.03, 7.36, 6.69],
+            50: [21.3, 15.38, 11.83, 8.28, 7.69, 7.1, 6.51, 5.92, 5.68, 5.32],
+            60: [19.86, 14.34, 11.03, 7.72, 7.17, 6.62, 6.07, 5.52, 5.3, 4.96, 3.31, 3.09],
+            70: [18.77, 13.56, 10.43, 7.3, 6.78, 6.26, 5.74, 5.21, 5.01, 4.69, 3.13, 2.92, 2.71, 2.5],
+            80: [17.94, 12.96, 9.97, 6.98, 6.48, 5.98, 5.48, 4.98, 4.79, 4.49, 2.99, 2.79, 2.59, 2.39, 2.19, 1.99],
+            90: [17.31, 12.5, 9.62, 6.73, 6.25, 5.77, 5.29, 4.81, 4.62, 4.33, 2.88, 2.69, 2.5, 2.31, 2.12, 1.92, 1.73, 1.63],
+            100: [16.78, 12.12, 9.32, 6.53, 6.06, 5.59, 5.13, 4.66, 4.47, 4.2, 2.8, 2.61, 2.42, 2.24, 2.05, 1.86, 1.68, 1.58, 1.49, 1.4]
+        };
+
+function calculateDetailPrizes(participants, entryFee, isMax = false, distributionType = 'pyramid') {
     if (participants < 2 || entryFee <= 0) {
         return '<div style="text-align: center; color: #999; padding: 20px;">Нужно минимум 2 участника</div>';
     }
@@ -290,14 +419,17 @@ function calculateDetailPrizes(participants, entryFee, isMax = false) {
     const prizePool = totalPool - ourCommission;
     const prizePlaces = Math.max(2, Math.floor(participants * 0.2));
     
+    // Выбираем нужную таблицу процентов
+    const percentageTable = distributionType === 'pyramid' ? detailPercentages : nonlinearPercentages;
+
     // Получаем проценты
-    let percentages = detailPercentages[participants];
+    let percentages = percentageTable[participants];
     if (!percentages) {
-        const available = Object.keys(detailPercentages).map(Number);
+        const available = Object.keys(percentageTable).map(Number);
         const closest = available.reduce((prev, curr) => 
             Math.abs(curr - participants) < Math.abs(prev - participants) ? curr : prev
         );
-        percentages = detailPercentages[closest];
+        percentages = percentageTable[closest];
     }
     
     let html = `
@@ -335,19 +467,65 @@ function calculateDetailPrizes(participants, entryFee, isMax = false) {
 // Инициализация калькуляторов
 document.addEventListener('DOMContentLoaded', function() {
     {% if tournament.entry_fee and tournament.entry_fee > 0 %}
+    // Получаем тип распределения из данных турнира
+    const distributionType = '{{ tournament.prize_distribution_type|default("pyramid") }}';
+
     // Текущие участники
     const currentElement = document.getElementById('currentPrizesDetail');
     if (currentElement) {
-        currentElement.innerHTML = calculateDetailPrizes({{ tournament.current_players }}, {{ tournament.entry_fee }}, false);
+        currentElement.innerHTML = calculateDetailPrizes({{ tournament.current_players }}, {{ tournament.entry_fee }}, false, distributionType);
     }
-    
+
     // Максимальные участники
     const maxElement = document.getElementById('maxPrizesDetail');
     if (maxElement) {
-        maxElement.innerHTML = calculateDetailPrizes({{ tournament.max_players }}, {{ tournament.entry_fee }}, true);
+        maxElement.innerHTML = calculateDetailPrizes({{ tournament.max_players }}, {{ tournament.entry_fee }}, true, distributionType);
     }
     {% endif %}
 });
+
+// ТАЙМЕР ОБРАТНОГО ОТСЧЕТА
+{% if tournament.start_date and tournament.start_time %}
+function updateCountdown() {
+    // Создаем дату начала турнира
+    const tournamentStart = new Date('{{ tournament.start_date }}T{{ tournament.start_time }}');
+    const now = new Date();
+    const timeLeft = tournamentStart - now;
+    
+    const countdownElement = document.getElementById('countdown-display');
+    
+    if (timeLeft <= 0) {
+        countdownElement.innerHTML = '<div style="color: #ff4444;">🔴 Турнир начался!</div>';
+        return;
+    }
+    
+    // Рассчитываем дни, часы, минуты
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+    
+    // Форматируем вывод
+    let display = '';
+    if (days > 0) {
+        display += `<div style="font-size: 18px;">${days}д ${hours}ч</div>`;
+        display += `<div style="font-size: 14px; opacity: 0.8;">${minutes}м ${seconds}с</div>`;
+    } else if (hours > 0) {
+        display += `<div style="font-size: 18px;">${hours}ч ${minutes}м</div>`;
+        display += `<div style="font-size: 14px; opacity: 0.8;">${seconds}с</div>`;
+    } else {
+        display += `<div style="font-size: 18px;">${minutes}м ${seconds}с</div>`;
+    }
+    
+    countdownElement.innerHTML = display;
+}
+
+// Запускаем таймер
+document.addEventListener('DOMContentLoaded', function() {
+    updateCountdown(); // Первое обновление
+    setInterval(updateCountdown, 1000); // Обновляем каждую секунду
+});
+{% endif %}
 </script>
 </body>
 </html>

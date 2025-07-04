@@ -27,14 +27,15 @@
         .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); }
         .flash.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
-        
     </style>
 </head>
 <body>
-     <div class="header">
-            <h1>🔒 Приватные турниры</h1>
-            <p>Турниры, защищенные паролем</p>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Общие турниры</h1>
+            <p>Все доступные турниры (публичные и приватные)</p>
             
+            {% if user %}
             <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     {% if user.photo_url %}
@@ -57,23 +58,24 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
 
-           <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
                 <a href="/create_tournament_page" class="nav-btn"
-                style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
-                        background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
                     📝 Создать турнир
                 </a>
                 <a href="/" class="nav-btn"
-                style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
-                        background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: #f8f9fa; color: #667eea; border: 2px solid #667eea;">
                     🏠 Мои турниры
                 </a>
-                <a href="/private_tournaments" class="nav-btn"
-                style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <a href="/public_tournaments" class="nav-btn"
+                   style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
+                          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                     🌐 Общие турниры
                 </a>
             </div>
@@ -87,12 +89,17 @@
             {% endif %}
         {% endwith %}
 
-        <h2>🔒 Приватные турниры</h2>
         <div class="tournaments">
             {% if tournaments %}
                 {% for tournament in tournaments %}
                 <div class="tournament-card">
-                    <h3 class="tournament-title">🔒 {{ tournament.name }}</h3>
+                    <h3 class="tournament-title">
+                        {% if tournament.tournament_type == 'private' %}
+                            🔒 {{ tournament.name }}
+                        {% else %}
+                            🌐 {{ tournament.name }}
+                        {% endif %}
+                    </h3>
                     <div class="tournament-info">
                         <strong>ID:</strong> TOUR_{{ tournament.id }}
                     </div>
@@ -119,6 +126,14 @@
                         <strong>Участие:</strong> <span style="color: #28a745; font-weight: bold;">Бесплатно</span>
                     </div>
                     {% endif %}
+                    <div class="tournament-info">
+                        <strong>Тип призов:</strong> 
+                        {% if tournament.prize_distribution_type == 'nonlinear' %}
+                            📊 Non-linear
+                        {% else %}
+                            🏆 Пирамида
+                        {% endif %}
+                    </div>
                     <div class="tournament-info">
                         {% if tournament.current_players >= tournament.min_players and tournament.current_players < tournament.max_players %}
                             <span class="status" style="background: #28a745;">{{ tournament.status }} ✓</span>
@@ -151,7 +166,7 @@
                 {% endfor %}
             {% else %}
                 <div class="tournament-card">
-                    <p>🎯 Публичных турниров пока нет.</p>
+                    <p>🎯 Турниров пока нет.</p>
                 </div>
             {% endif %}
         </div>
