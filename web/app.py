@@ -96,9 +96,14 @@ def index():
         # Для неавторизованных только публичные
         tournaments = get_tournaments_db(tournament_type='public')
     
+    # Получаем баланс пользователя для отображения
+    user_balance = 0
+    if user and user.get('profile_created'):
+        user_balance = get_user_balance(int(user['id']))
+    
     telegram_widget = create_telegram_login_widget(BOT_USERNAME)
     return render_template('index.html', tournaments=tournaments, bot_name=BOT_NAME, 
-                         user=user, telegram_widget=telegram_widget)
+                         user=user, telegram_widget=telegram_widget, user_balance=user_balance)
                 
 @app.route('/create_tournament_page')
 def create_tournament_page():
@@ -108,7 +113,10 @@ def create_tournament_page():
         flash('Создайте профиль для создания турниров', 'error')
         return redirect(url_for('index'))
     
-    return render_template('create_tournament.html', bot_name=BOT_NAME, user=user)
+    # Получаем баланс пользователя для отображения
+    user_balance = get_user_balance(int(user['id']))
+    
+    return render_template('create_tournament.html', bot_name=BOT_NAME, user=user, user_balance=user_balance)
 
 @app.route('/tournament/<int:tournament_id>')
 def tournament_detail(tournament_id):
@@ -401,10 +409,13 @@ def public_tournaments():
     # Получаем ВСЕ турниры (и публичные, и приватные)
     all_tournaments = get_tournaments_db()
     
+    # Получаем баланс пользователя для отображения
+    user_balance = get_user_balance(int(user['id']))
+    
     telegram_widget = create_telegram_login_widget(BOT_USERNAME)
     
     return render_template('public_tournaments.html', tournaments=all_tournaments, 
-                         bot_name=BOT_NAME, user=user, telegram_widget=telegram_widget)
+                         bot_name=BOT_NAME, user=user, telegram_widget=telegram_widget, user_balance=user_balance)
 
 @app.route('/join/<int:tournament_id>')
 def join_tournament_web(tournament_id):
@@ -900,7 +911,7 @@ def balance_topup():
     except ValueError:
         flash('Неверная сумма', 'error')
     
-    return redirect(url_for('balance_page'))
+    return redirect(url_for('index'))
 
 @app.route('/balance/history')
 def balance_history():

@@ -60,7 +60,7 @@ async def auth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"🌐 Параметры авторизации: {auth_params}")
     
     # ЗАМЕНИ НА СВОЮ NGROK ССЫЛКУ
-    auth_url = f"https://5ce9-2a09-bac5-596d-52d-00-84-a8.ngrok-free.app/auth/telegram?{auth_params}"
+    auth_url = f"https://a771-2a09-bac5-596c-52d-00-84-98.ngrok-free.app/auth/telegram?{auth_params}"
     
     welcome_message = f"""
 🎮 Добро пожаловать в GarantGame!
