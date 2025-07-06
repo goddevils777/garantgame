@@ -523,8 +523,21 @@ def calculate_free_tournament_prizes(participants_count):
             {'place': 6, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
             {'place': 7, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
             {'place': 8, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
-            {'place': 9, 'real_money': 0.0, 'bonus':
-
+            {'place': 9, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 10, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'}
+        ]
+        prize_places = 10
+    
+    total_real_money = sum(p['real_money'] for p in distribution)
+    total_bonus = sum(p['bonus'] for p in distribution)
+    
+    return {
+        'total_real_money': total_real_money,
+        'total_bonus': total_bonus,
+        'distribution': distribution,
+        'prize_places': prize_places
+    }
+    
 def get_user_balance(telegram_id):
     """Получить баланс пользователя"""
     conn = sqlite3.connect(DB_PATH)
@@ -636,6 +649,91 @@ def process_tournament_payment_from_balance(telegram_id, tournament_id, username
             return False, "Ошибка добавления в турнир"
     else:
         return False, "Ошибка списания с баланса"
+
+def get_all_users_count():
+    """Получить количество всех пользователей"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT COUNT(*) FROM users')
+    count = cursor.fetchone()[0]
+    conn.close()
+    
+    return count
+
+def get_all_users_for_admin():
+    """Получить всех пользователей для админки"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT telegram_id, unique_username, first_name, last_name, 
+               balance, bonus_balance, pubg_nickname, created_at
+        FROM users 
+        ORDER BY created_at DESC
+    ''')
+    
+    users = []
+    for row in cursor.fetchall():
+        users.append({
+            'telegram_id': row[0],
+            'unique_username': row[1],
+            'first_name': row[2],
+            'last_name': row[3] or '',
+            'balance': row[4] or 0.0,
+            'bonus_balance': row[5] or 0.0,
+            'pubg_nickname': row[6] or '',
+            'created_at': row[7],
+            'telegram_link': f"https://t.me/{row[0]}" if row[0] else None
+        })
+    
+    conn.close()
+    return users
+
+def get_user_by_username(username):
+    """Получить пользователя по unique_username"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM users WHERE unique_username = ?', (username,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        return {
+            'id': user[0],
+            'telegram_id': user[1],
+            'unique_username': user[2],
+            'first_name': user[3],
+            'last_name': user[4] if len(user) > 4 else '',
+            'photo_url': user[5] if len(user) > 5 else '',
+            'balance': user[6] if len(user) > 6 else 0.0,
+            'pubg_nickname': user[7] if len(user) > 7 else '',
+            'created_at': user[8] if len(user) > 8 else '',
+            'created_tournaments': user[9] if len(user) > 9 else 0,
+            'joined_tournaments': user[10] if len(user) > 10 else 0,
+            'bonus_balance': user[11] if len(user) > 11 else 0.0
+        }
+    return None
+
+def add_fake_participants_for_test(tournament_id, count=10):
+    """ТОЛЬКО ДЛЯ ТЕСТИРОВАНИЯ - добавить фиктивных участников"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    for i in range(count):
+        fake_username = f"test_user_{i+1}"
+        try:
+            cursor.execute('''
+                INSERT INTO tournament_participants (tournament_id, username)
+                VALUES (?, ?)
+            ''', (tournament_id, fake_username))
+        except:
+            pass  # Игнорируем дубликаты
+    
+    conn.commit()
+    conn.close()
+    return count
 
 # Инициализация базы данных при импорте
 if __name__ == "__main__":

@@ -4,18 +4,18 @@ import os
 import re
 import time
 from urllib.parse import unquote
+from admin_auth import admin_required, is_admin
+from config.settings import BOT_NAME, BOT_TOKEN
 
 # Добавляем пути
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from config.settings import BOT_NAME, BOT_TOKEN
-from auth import verify_telegram_auth, create_telegram_login_widget
 from database import (create_user_db, get_user_by_telegram_id_db, is_username_taken_db,
                      create_tournament_db, get_tournaments_db, get_tournament_participants,
                      add_tournament_participant, delete_tournament_db, update_tournament_db,
                      update_tournament_password_db, update_lobby_codes_db, get_tournament_with_lobby_db,
-                     calculate_prize_distribution, get_user_balance, update_user_balance, 
-                     add_transaction, process_tournament_payment_from_balance)
+                     calculate_prize_distribution, get_user_balance, get_user_bonus_balance, update_user_balance, 
+                     add_transaction, process_tournament_payment_from_balance, get_all_users_count, get_all_users_for_admin, get_user_by_username, update_user_bonus_balance, add_fake_participants_for_test)
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'
@@ -98,12 +98,15 @@ def index():
     
     # Получаем баланс пользователя для отображения
     user_balance = 0
+    user_bonus_balance = 0
     if user and user.get('profile_created'):
         user_balance = get_user_balance(int(user['id']))
+        user_bonus_balance = get_user_bonus_balance(int(user['id']))
     
     telegram_widget = create_telegram_login_widget(BOT_USERNAME)
     return render_template('index.html', tournaments=tournaments, bot_name=BOT_NAME, 
-                         user=user, telegram_widget=telegram_widget, user_balance=user_balance)
+                         user=user, telegram_widget=telegram_widget, 
+                         user_balance=user_balance, user_bonus_balance=user_bonus_balance)
                 
 @app.route('/create_tournament_page')
 def create_tournament_page():
@@ -115,8 +118,10 @@ def create_tournament_page():
     
     # Получаем баланс пользователя для отображения
     user_balance = get_user_balance(int(user['id']))
+    user_bonus_balance = get_user_bonus_balance(int(user['id']))
     
-    return render_template('create_tournament.html', bot_name=BOT_NAME, user=user, user_balance=user_balance)
+    return render_template('create_tournament.html', bot_name=BOT_NAME, user=user, 
+                         user_balance=user_balance, user_bonus_balance=user_bonus_balance)
 
 @app.route('/tournament/<int:tournament_id>')
 def tournament_detail(tournament_id):
@@ -142,6 +147,23 @@ def tournament_detail(tournament_id):
                 # Нет доступа - перенаправляем на ввод пароля
                 flash('Этот турнир приватный. Введите пароль для доступа.', 'error')
                 return redirect(url_for('tournament_password', tournament_id=tournament_id))
+    
+    # Получаем список участников турнира
+    tournament['participants'] = get_tournament_participants(tournament_id)
+    
+    # Получаем баланс пользователя для отображения
+    user_balance = 0
+    user_bonus_balance = 0
+    if user and user.get('profile_created'):
+        user_balance = get_user_balance(int(user['id']))
+        user_bonus_balance = get_user_bonus_balance(int(user['id']))
+    
+    return render_template('tournament_detail.html', 
+                         tournament=tournament, 
+                         bot_name=BOT_NAME, 
+                         user=user,
+                         user_balance=user_balance,
+                         user_bonus_balance=user_bonus_balance)
     
     # Получаем список участников турнира
     tournament['participants'] = get_tournament_participants(tournament_id)
@@ -324,23 +346,25 @@ def create_tournament():
     if not tournament_name:
         flash('Введите название турнира!', 'error')
         return redirect(url_for('create_tournament_page'))
-    
+
     # Валидация пароля для приватных турниров
     if tournament_type == 'private':
         if not tournament_password or len(tournament_password) != 6 or not tournament_password.isdigit():
             flash('Для приватного турнира требуется 6-значный пароль из цифр', 'error')
             return redirect(url_for('create_tournament_page'))
-    
+
     try:
         min_players = int(min_players)
         max_players = int(max_players)
         entry_fee = float(entry_fee)
         
-        # Проверка минимума участников в зависимости от типа турнира
+        # НОВАЯ ПРОВЕРКА: Для бесплатного турнира минимум 40 участников
         if entry_fee == 0:
-            # Бесплатный турнир - минимум 40 участников
-            if min_players < 40 or min_players > 100:
-                flash('Для бесплатного турнира минимум участников должен быть от 40 до 100', 'error')
+            if min_players < 40 or max_players < 40:
+                flash('🎉 Для бесплатного турнира минимум участников должен быть не менее 40 человек', 'error')
+                return redirect(url_for('create_tournament_page'))
+            if min_players > 100 or max_players > 100:
+                flash('Максимум участников для бесплатного турнира: 100 человек', 'error')
                 return redirect(url_for('create_tournament_page'))
         else:
             # Платный турнир - минимум 10 участников
@@ -421,11 +445,13 @@ def public_tournaments():
     
     # Получаем баланс пользователя для отображения
     user_balance = get_user_balance(int(user['id']))
+    user_bonus_balance = get_user_bonus_balance(int(user['id']))
     
     telegram_widget = create_telegram_login_widget(BOT_USERNAME)
     
     return render_template('public_tournaments.html', tournaments=all_tournaments, 
-                         bot_name=BOT_NAME, user=user, telegram_widget=telegram_widget, user_balance=user_balance)
+                         bot_name=BOT_NAME, user=user, telegram_widget=telegram_widget, 
+                         user_balance=user_balance, user_bonus_balance=user_bonus_balance)
 
 @app.route('/join/<int:tournament_id>')
 def join_tournament_web(tournament_id):
@@ -877,12 +903,14 @@ def balance_page():
         flash('Сначала создайте профиль', 'error')
         return redirect(url_for('index'))
     
-    # Получаем текущий баланс
+    # Получаем текущий баланс и бонусный баланс
     user_balance = get_user_balance(int(user['id']))
+    user_bonus_balance = get_user_bonus_balance(int(user['id']))
     
     return render_template('balance.html', 
                          user=user, 
                          user_balance=user_balance,
+                         user_bonus_balance=user_bonus_balance,
                          bot_name=BOT_NAME)
 
 @app.route('/balance/topup', methods=['POST'])
@@ -995,8 +1023,268 @@ def join_tournament_with_balance(tournament_id):
     return redirect(url_for('tournament_detail', tournament_id=tournament_id))
 
 
+# ==================== АДМИНСКИЕ РОУТЫ ====================
+
+@app.route('/administrator')
+@admin_required
+def admin_dashboard():
+    """Главная страница админки"""
+    user = session.get('user')
+    
+    # Получаем статистику
+    all_tournaments = get_tournaments_db()
+    all_users = get_all_users_count()  # Создадим эту функцию
+    
+    # Подсчитываем статистику
+    total_tournaments = len(all_tournaments)
+    active_tournaments = len([t for t in all_tournaments if t['current_players'] >= t['min_players']])
+    total_prize_pool = sum([t['entry_fee'] * t['current_players'] for t in all_tournaments if t['entry_fee'] > 0])
+    
+    # Сортируем турниры по дате (ближайшие сверху)
+    upcoming_tournaments = sorted(
+        [t for t in all_tournaments if t['start_date']], 
+        key=lambda x: f"{x['start_date']} {x['start_time']}"
+    )[:10]  # Показываем только 10 ближайших
+    
+    return render_template('admin_dashboard.html',
+                         user=user,
+                         bot_name=BOT_NAME,
+                         total_users=all_users,
+                         total_tournaments=total_tournaments,
+                         active_tournaments=active_tournaments,
+                         total_prize_pool=f"{total_prize_pool:.2f}",
+                         upcoming_tournaments=upcoming_tournaments)
+
+@app.route('/administrator/users')
+@admin_required
+def admin_users():
+    """Страница пользователей в админке"""
+    user = session.get('user')
+    
+    # Получаем всех пользователей
+    all_users = get_all_users_for_admin()
+    
+    # Подсчитываем статистику
+    total_users = len(all_users)
+    users_with_balance = len([u for u in all_users if u['balance'] > 0])
+    users_with_pubg = len([u for u in all_users if u['pubg_nickname']])
+    total_balance = sum([u['balance'] + u['bonus_balance'] for u in all_users])
+    
+    return render_template('admin_users.html',
+                         user=user,
+                         bot_name=BOT_NAME,
+                         users=all_users,
+                         total_users=total_users,
+                         users_with_balance=users_with_balance,
+                         users_with_pubg=users_with_pubg,
+                         total_balance=f"{total_balance:.2f}")
+
+@app.route('/administrator/tournaments')
+@admin_required
+def admin_tournaments():
+    """Страница турниров в админке"""
+    user = session.get('user')
+    
+    # Получаем все турниры
+    all_tournaments = get_tournaments_db()
+    
+    # Сортируем турниры: сначала по дате (ближайшие сверху), потом по ID
+    def tournament_sort_key(tournament):
+        if tournament['start_date'] and tournament['start_time']:
+            return f"{tournament['start_date']} {tournament['start_time']}"
+        else:
+            return "9999-12-31 23:59"  # Турниры без даты - в конец
+    
+    sorted_tournaments = sorted(all_tournaments, key=tournament_sort_key)
+    
+    # Подсчитываем статистику
+    total_tournaments = len(all_tournaments)
+    active_tournaments = len([t for t in all_tournaments if t['current_players'] >= t['min_players']])
+    paid_tournaments = len([t for t in all_tournaments if t['entry_fee'] > 0])
+    free_tournaments = len([t for t in all_tournaments if t['entry_fee'] == 0])
+    
+    return render_template('admin_tournaments.html',
+                         user=user,
+                         bot_name=BOT_NAME,
+                         tournaments=sorted_tournaments,
+                         total_tournaments=total_tournaments,
+                         active_tournaments=active_tournaments,
+                         paid_tournaments=paid_tournaments,
+                         free_tournaments=free_tournaments)
+
+                         
+@app.route('/administrator/tournament/<int:tournament_id>')
+@admin_required
+def admin_tournament_manage(tournament_id):
+    """Страница управления конкретным турниром"""
+    user = session.get('user')
+    
+    # Получаем турнир
+    tournament = get_tournament_with_lobby_db(tournament_id)
+    if not tournament:
+        flash('Турнир не найден', 'error')
+        return redirect(url_for('admin_tournaments'))
+    
+    # Получаем участников
+    tournament['participants'] = get_tournament_participants(tournament_id)
+    
+    # Рассчитываем призовые места
+    if tournament['entry_fee'] > 0:
+        # Платный турнир
+        prize_calculation = calculate_prize_distribution(
+            tournament['current_players'], 
+            tournament['entry_fee'], 
+            tournament.get('prize_distribution_type', 'pyramid')
+        )
+        prize_places = prize_calculation['distribution']
+    else:
+        # Бесплатный турнир
+        from database import calculate_free_tournament_prizes
+        prize_calculation = calculate_free_tournament_prizes(tournament['current_players'])
+        prize_places = prize_calculation['distribution']
+    
+    return render_template('admin_tournament_manage.html',
+                         user=user,
+                         bot_name=BOT_NAME,
+                         tournament=tournament,
+                         prize_places=prize_places)
+
+@app.route('/administrator/tournament/<int:tournament_id>/distribute_prizes', methods=['POST'])
+@admin_required
+def admin_distribute_prizes(tournament_id):
+    """Выдача призов победителям"""
+    user = session.get('user')
+    
+    # Получаем турнир
+    tournament = get_tournament_with_lobby_db(tournament_id)
+    if not tournament:
+        flash('Турнир не найден', 'error')
+        return redirect(url_for('admin_tournaments'))
+    
+    # Проверяем, что турнир готов
+    if tournament['current_players'] < tournament['min_players']:
+        flash('Турнир еще не готов к началу', 'error')
+        return redirect(url_for('admin_tournament_manage', tournament_id=tournament_id))
+    
+    # Получаем данные формы
+    winners = {}
+    pubg_results = {}
+    
+    # Рассчитываем призовые места
+    if tournament['entry_fee'] > 0:
+        prize_calculation = calculate_prize_distribution(
+            tournament['current_players'], 
+            tournament['entry_fee'], 
+            tournament.get('prize_distribution_type', 'pyramid')
+        )
+        prize_places = prize_calculation['distribution']
+    else:
+        from database import calculate_free_tournament_prizes
+        prize_calculation = calculate_free_tournament_prizes(tournament['current_players'])
+        prize_places = prize_calculation['distribution']
+    
+    # Собираем данные победителей
+    for place_data in prize_places:
+        place = place_data['place']
+        winner_username = request.form.get(f'winner_{place}')
+        pubg_nickname = request.form.get(f'pubg_result_{place}', '')
+        
+        if winner_username:
+            winners[place] = winner_username
+            pubg_results[place] = pubg_nickname
+    
+    if not winners:
+        flash('Выберите хотя бы одного победителя', 'error')
+        return redirect(url_for('admin_tournament_manage', tournament_id=tournament_id))
+    
+    # Выдаем призы
+    success_count = 0
+    for place, username in winners.items():
+        place_data = next((p for p in prize_places if p['place'] == place), None)
+        if not place_data:
+            continue
+        
+        # Получаем пользователя по username
+        user_data = get_user_by_username(username)
+        if not user_data:
+            flash(f'Пользователь {username} не найден', 'error')
+            continue
+        
+        # Выдаем приз
+        if tournament['entry_fee'] > 0:
+            # Платный турнир - реальные деньги
+            amount = place_data['amount']
+            current_balance = get_user_balance(user_data['telegram_id'])
+            new_balance = current_balance + amount
+            
+            if update_user_balance(user_data['telegram_id'], new_balance):
+                add_transaction(
+                    user_data['telegram_id'], 
+                    'tournament_prize', 
+                    amount, 
+                    f'Приз за {place} место в турнире TOUR_{tournament_id}',
+                    tournament_id
+                )
+                success_count += 1
+        else:
+            # Бесплатный турнир - комбинированные призы
+            real_money = place_data.get('real_money', 0)
+            bonus_money = place_data.get('bonus', 0)
+            
+            # Выдаем реальные деньги
+            if real_money > 0:
+                current_balance = get_user_balance(user_data['telegram_id'])
+                new_balance = current_balance + real_money
+                update_user_balance(user_data['telegram_id'], new_balance)
+                add_transaction(
+                    user_data['telegram_id'], 
+                    'tournament_prize', 
+                    real_money, 
+                    f'Денежный приз за {place} место в бесплатном турнире TOUR_{tournament_id}',
+                    tournament_id
+                )
+            
+            # Выдаем бонусы
+            if bonus_money > 0:
+                current_bonus = get_user_bonus_balance(user_data['telegram_id'])
+                new_bonus = current_bonus + bonus_money
+                update_user_bonus_balance(user_data['telegram_id'], new_bonus)
+                add_transaction(
+                    user_data['telegram_id'], 
+                    'bonus_prize', 
+                    bonus_money, 
+                    f'Бонусный приз за {place} место в бесплатном турнире TOUR_{tournament_id}',
+                    tournament_id
+                )
+            
+            success_count += 1
+    
+    if success_count > 0:
+        flash(f'Призы успешно выданы {success_count} победителям!', 'success')
+    else:
+        flash('Ошибка при выдаче призов', 'error')
+    
+    return redirect(url_for('admin_tournaments'))
+
+
+@app.route('/administrator/tournament/<int:tournament_id>/add_fake_participants')
+@admin_required
+def admin_add_fake_participants(tournament_id):
+    """ТЕСТ: Добавить фиктивных участников для тестирования"""
+    tournament = get_tournament_with_lobby_db(tournament_id)
+    if not tournament:
+        flash('Турнир не найден', 'error')
+        return redirect(url_for('admin_tournaments'))
+    
+    # Добавляем 15 фиктивных участников
+    added = add_fake_participants_for_test(tournament_id, 15)
+    flash(f'✅ Добавлено {added} тестовых участников для турнира "{tournament["name"]}"', 'success')
+    
+    return redirect(url_for('admin_tournament_manage', tournament_id=tournament_id))
+
+
 
 if __name__ == '__main__':
-    print(f"🌐 Веб-интерфейс {BOT_NAME} запущен!")
+    print(f"🌐 Веб-интерфейс GarantGame запущен!")
     print("📱 Откройте: http://localhost:8000")
     app.run(debug=True, port=8000)

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пользователи - Админ-панель</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
+                 color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .admin-nav { background: white; padding: 20px; border-radius: 15px; 
+                    margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .nav-btn { background: #6c757d; color: white; padding: 12px 25px; 
+                  border: none; border-radius: 8px; cursor: pointer; font-size: 16px; 
+                  text-decoration: none; display: inline-block; margin: 0 10px 10px 0; }
+        .nav-btn:hover { transform: translateY(-2px); background: #5a6268; }
+        .nav-btn.active { background: #dc3545; }
+        .content-section { background: white; padding: 30px; border-radius: 15px; 
+                          margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .users-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                      gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-number { font-size: 2em; font-weight: bold; color: #dc3545; }
+        .table-responsive { overflow-x: auto; }
+        .users-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .users-table th, .users-table td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .users-table th { background: #f8f9fa; font-weight: bold; position: sticky; top: 0; }
+        .users-table tr:hover { background: #f8f9fa; }
+        .telegram-link { color: #0088cc; text-decoration: none; }
+        .telegram-link:hover { text-decoration: underline; }
+        .balance-cell { text-align: right; font-weight: bold; }
+        .balance-positive { color: #28a745; }
+        .balance-zero { color: #6c757d; }
+        .search-box { margin-bottom: 20px; }
+        .search-input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 300px; }
+        .flash { padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 Управление пользователями</h1>
+            <p>Просмотр всех зарегистрированных пользователей</p>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
+                        👑
+                    </div>
+                    <div>
+                        <strong style="font-size: 1.2em;">{{ user.unique_username }}</strong>
+                        <br><small style="opacity: 0.8;">Администратор</small>
+                    </div>
+                    <div style="margin-left: auto;">
+                        <a href="/" style="color: white; text-decoration: none; padding: 8px 15px; background: rgba(255,255,255,0.2); border-radius: 5px;">
+                            🏠 На главную
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="admin-nav">
+            <h3 style="margin-bottom: 15px;">📊 Админ-панель</h3>
+            <a href="/administrator" class="nav-btn">📈 Главная</a>
+            <a href="/administrator/users" class="nav-btn active">👥 Пользователи</a>
+            <a href="/administrator/tournaments" class="nav-btn">🏆 Турниры</a>
+            <a href="/administrator/results" class="nav-btn">🎯 Результаты</a>
+        </div>
+
+        <div class="content-section">
+            <h3 style="color: #dc3545; margin-bottom: 20px;">📊 Статистика пользователей</h3>
+            
+            <div class="users-stats">
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_users }}</div>
+                    <div>Всего пользователей</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ users_with_balance }}</div>
+                    <div>С положительным балансом</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ users_with_pubg }}</div>
+                    <div>С PUBG никнеймом</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${{ total_balance }}</div>
+                    <div>Общий баланс пользователей</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <h3 style="color: #dc3545; margin-bottom: 20px;">👥 Все пользователи</h3>
+            
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="🔍 Поиск по никнейму или Telegram ID..." 
+                       onkeyup="searchUsers(this.value)">
+            </div>
+            
+            <div class="table-responsive">
+                <table class="users-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Telegram ID</th>
+                            <th>Ссылка Telegram</th>
+                            <th>Никнейм на сайте</th>
+                            <th>Имя</th>
+                            <th>PUBG никнейм</th>
+                            <th>Основной баланс</th>
+                            <th>Бонусный баланс</th>
+                            <th>Дата регистрации</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user_item in users %}
+                        <tr>
+                            <td>{{ user_item.telegram_id }}</td>
+                            <td>
+                                <a href="https://t.me/{{ user_item.telegram_id }}" 
+                                   target="_blank" class="telegram-link">
+                                    📱 Открыть в Telegram
+                                </a>
+                            </td>
+                            <td><strong>{{ user_item.unique_username }}</strong></td>
+                            <td>{{ user_item.first_name }} {{ user_item.last_name }}</td>
+                            <td>
+                                {% if user_item.pubg_nickname %}
+                                    <span style="background: #28a745; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px;">
+                                        🎮 {{ user_item.pubg_nickname }}
+                                    </span>
+                                {% else %}
+                                    <span style="color: #6c757d;">Не указан</span>
+                                {% endif %}
+                            </td>
+                            <td class="balance-cell">
+                                <span class="{% if user_item.balance > 0 %}balance-positive{% else %}balance-zero{% endif %}">
+                                    ${{ "%.2f"|format(user_item.balance) }}
+                                </span>
+                            </td>
+                            <td class="balance-cell">
+                                <span class="{% if user_item.bonus_balance > 0 %}balance-positive{% else %}balance-zero{% endif %}">
+                                    ${{ "%.2f"|format(user_item.bonus_balance) }}
+                                </span>
+                            </td>
+                            <td>{{ user_item.created_at[:10] if user_item.created_at else 'Н/Д' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function searchUsers(searchTerm) {
+            const table = document.getElementById('usersTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const text = row.textContent.toLowerCase();
+                
+                if (text.includes(searchTerm.toLowerCase())) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

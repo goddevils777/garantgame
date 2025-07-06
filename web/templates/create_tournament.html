@@ -79,7 +79,7 @@
                 <a href="/balance" class="nav-btn"
             style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
                     background: #f8f9fa; color: #4CAF50; border: 2px solid #4CAF50;">
-                💰 Баланс: ${{ "%.2f"|format(user_balance) if user_balance else "0.00" }}
+                💰 ${{ "%.2f"|format(user_balance) if user_balance else "0.00" }} | 🎟️ ${{ "%.2f"|format(user_bonus_balance) if user_bonus_balance else "0.00" }}
             </a>
             </div>
         </div>
@@ -376,27 +376,96 @@
                     const distributionType = document.getElementById('prize_distribution').value;
 
                     // Сброс если нет данных
-                    if (maxPlayers < 10 || maxPlayers > 100 || entryFee <= 0) {
+                    if (maxPlayers < 10 || maxPlayers > 100) {
                         document.getElementById('prizeDistributionList').innerHTML = 
-                            '<div style="text-align: center; color: #999; padding: 20px;">Введите количество участников (10-100) и стоимость участия для расчета призов</div>';
+                            '<div style="text-align: center; color: #999; padding: 20px;">Введите количество участников (10-100)</div>';
                         return;
                     }
 
-                    // Основные расчеты
+                    // БЕСПЛАТНЫЙ ТУРНИР
+                    if (entryFee === 0) {
+                        if (maxPlayers < 40) {
+                            document.getElementById('prizeDistributionList').innerHTML = 
+                                '<div style="text-align: center; color: #dc3545; padding: 20px; background: #f8d7da; border-radius: 10px; border: 1px solid #f5c6cb;">⚠️ Для бесплатного турнира минимум 40 участников</div>';
+                            return;
+                        }
+
+                        // Расчет призов для бесплатного турнира
+                        let distribution, prizePlaces;
+                        
+                        if (maxPlayers >= 40 && maxPlayers <= 60) {
+                            distribution = [
+                                {place: 1, real_money: 10, bonus: 10, description: '$10 + купон $10'},
+                                {place: 2, real_money: 5, bonus: 5, description: '$5 + купон $5'},
+                                {place: 3, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 4, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 5, real_money: 0, bonus: 5, description: 'купон $5'}
+                            ];
+                            prizePlaces = 5;
+                        } else if (maxPlayers >= 61 && maxPlayers <= 80) {
+                            distribution = [
+                                {place: 1, real_money: 10, bonus: 10, description: '$10 + купон $10'},
+                                {place: 2, real_money: 5, bonus: 5, description: '$5 + купон $5'},
+                                {place: 3, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 4, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 5, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 6, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 7, real_money: 0, bonus: 5, description: 'купон $5'}
+                            ];
+                            prizePlaces = 7;
+                        } else { // 81-100
+                            distribution = [
+                                {place: 1, real_money: 10, bonus: 10, description: '$10 + купон $10'},
+                                {place: 2, real_money: 5, bonus: 5, description: '$5 + купон $5'},
+                                {place: 3, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 4, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 5, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 6, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 7, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 8, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 9, real_money: 0, bonus: 5, description: 'купон $5'},
+                                {place: 10, real_money: 0, bonus: 5, description: 'купон $5'}
+                            ];
+                            prizePlaces = 10;
+                        }
+
+                        let prizeHTML = `
+                            <div style="margin-bottom: 20px; padding: 15px; background: #d4edda; border-radius: 8px; text-align: center; border: 1px solid #c3e6cb;">
+                                <div style="font-size: 18px; font-weight: bold; color: #155724; margin-bottom: 5px;">
+                                    🎉 БЕСПЛАТНЫЙ ТУРНИР
+                                </div>
+                                <div style="color: #155724; margin-bottom: 8px;">
+                                    ${maxPlayers} участников | Призовых мест: ${prizePlaces}
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        `;
+
+                        for (let prize of distribution) {
+                            const borderColor = prize.place <= 2 ? '#28a745' : '#ffc107';
+                            prizeHTML += `
+                                <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid ${borderColor}; text-align: center;">
+                                    <div style="font-weight: bold; color: #333; margin-bottom: 5px;">${prize.place} место</div>
+                                    <div style="font-size: 16px; font-weight: bold; color: #28a745; margin-bottom: 3px;">${prize.description}</div>
+                                </div>
+                            `;
+                        }
+
+                        prizeHTML += '</div>';
+                        document.getElementById('prizeDistributionList').innerHTML = prizeHTML;
+                        return;
+                    }
+
+                    // ПЛАТНЫЙ ТУРНИР (остальной код остается тот же)
                     const totalPool = maxPlayers * entryFee;
                     const ourCommission = totalPool * 0.05;
                     const prizePool = totalPool - ourCommission;
                     const prizePlaces = Math.max(2, Math.floor(maxPlayers * 0.2));
 
-                    
-
-                    // Выбираем нужную таблицу процентов
                     const percentageTable = distributionType === 'pyramid' ? exactPercentages : nonlinearPercentages;
 
-                    // Получаем проценты для данного количества участников
                     let percentages = percentageTable[maxPlayers];
                     if (!percentages) {
-                        // Находим ближайшее значение
                         const available = Object.keys(percentageTable).map(Number);
                         const closest = available.reduce((prev, curr) => 
                             Math.abs(curr - maxPlayers) < Math.abs(prev - maxPlayers) ? curr : prev
@@ -404,7 +473,6 @@
                         percentages = percentageTable[closest];
                     }
 
-                    // Создаем заголовок
                     let prizeHTML = `
                         <div style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center;">
                             <div style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 5px;">
@@ -420,7 +488,6 @@
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
                     `;
 
-                    // Добавляем призы
                     for (let i = 0; i < Math.min(prizePlaces, percentages.length); i++) {
                         const percentage = percentages[i];
                         const amount = (totalPool * percentage / 100);

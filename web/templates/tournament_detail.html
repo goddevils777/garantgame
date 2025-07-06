@@ -99,7 +99,7 @@
                 <a href="/balance" class="nav-btn"
                 style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
                         background: #f8f9fa; color: #4CAF50; border: 2px solid #4CAF50;">
-                    💰 Баланс: ${{ "%.2f"|format(user_balance) if user_balance else "0.00" }}
+                    💰 ${{ "%.2f"|format(user_balance) if user_balance else "0.00" }} | 🎟️ ${{ "%.2f"|format(user_bonus_balance) if user_bonus_balance else "0.00" }}
                 </a>
             </div>
         </div>
@@ -417,19 +417,89 @@
         };
 
 function calculateDetailPrizes(participants, entryFee, isMax = false, distributionType = 'pyramid') {
-    if (participants < 2 || entryFee <= 0) {
+    if (participants < 2) {
         return '<div style="text-align: center; color: #999; padding: 20px;">Нужно минимум 2 участника</div>';
     }
     
+    // БЕСПЛАТНЫЙ ТУРНИР
+    if (entryFee === 0) {
+        if (participants < 40) {
+            return '<div style="text-align: center; color: #dc3545; padding: 20px; background: #f8d7da; border-radius: 10px;">⚠️ Для бесплатного турнира нужно минимум 40 участников</div>';
+        }
+
+        // Расчет призов для бесплатного турнира
+        let distribution, prizePlaces;
+        
+        if (participants >= 40 && participants <= 60) {
+            distribution = [
+                {place: 1, real_money: 10, bonus: 10, description: '$10 + купон $10'},
+                {place: 2, real_money: 5, bonus: 5, description: '$5 + купон $5'},
+                {place: 3, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 4, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 5, real_money: 0, bonus: 5, description: 'купон $5'}
+            ];
+            prizePlaces = 5;
+        } else if (participants >= 61 && participants <= 80) {
+            distribution = [
+                {place: 1, real_money: 10, bonus: 10, description: '$10 + купон $10'},
+                {place: 2, real_money: 5, bonus: 5, description: '$5 + купон $5'},
+                {place: 3, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 4, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 5, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 6, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 7, real_money: 0, bonus: 5, description: 'купон $5'}
+            ];
+            prizePlaces = 7;
+        } else { // 81-100
+            distribution = [
+                {place: 1, real_money: 10, bonus: 10, description: '$10 + купон $10'},
+                {place: 2, real_money: 5, bonus: 5, description: '$5 + купон $5'},
+                {place: 3, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 4, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 5, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 6, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 7, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 8, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 9, real_money: 0, bonus: 5, description: 'купон $5'},
+                {place: 10, real_money: 0, bonus: 5, description: 'купон $5'}
+            ];
+            prizePlaces = 10;
+        }
+
+        let html = `
+            <div style="margin-bottom: 20px; padding: 15px; background: ${isMax ? '#d4edda' : '#e8f5e8'}; border-radius: 8px; text-align: center; border: 1px solid #c3e6cb;">
+                <div style="font-size: 16px; font-weight: bold; color: #155724; margin-bottom: 8px;">
+                    🎉 БЕСПЛАТНЫЙ ТУРНИР - ${participants} участников
+                </div>
+                <div style="color: #155724; margin-bottom: 5px;">
+                    Призовых мест: ${prizePlaces}
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+        `;
+        
+        for (let prize of distribution) {
+            const borderColor = prize.place <= 2 ? '#28a745' : '#ffc107';
+            html += `
+                <div style="background: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid ${borderColor};">
+                    <div style="font-weight: bold; color: #333; margin-bottom: 8px; font-size: 14px;">${prize.place} место</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #28a745; margin-bottom: 5px;">${prize.description}</div>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // ПЛАТНЫЙ ТУРНИР (остальной код остается тот же)
     const totalPool = participants * entryFee;
     const ourCommission = totalPool * 0.05;
     const prizePool = totalPool - ourCommission;
     const prizePlaces = Math.max(2, Math.floor(participants * 0.2));
-    
-    // Выбираем нужную таблицу процентов
+
     const percentageTable = distributionType === 'pyramid' ? detailPercentages : nonlinearPercentages;
 
-    // Получаем проценты
     let percentages = percentageTable[participants];
     if (!percentages) {
         const available = Object.keys(percentageTable).map(Number);

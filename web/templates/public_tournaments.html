@@ -81,7 +81,7 @@
                 <a href="/balance" class="nav-btn"
                 style="padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; transition: all 0.3s;
                         background: #f8f9fa; color: #4CAF50; border: 2px solid #4CAF50;">
-                    💰 Баланс: ${{ "%.2f"|format(user_balance) if user_balance else "0.00" }}
+                    💰 ${{ "%.2f"|format(user_balance) if user_balance else "0.00" }} | 🎟️ ${{ "%.2f"|format(user_bonus_balance) if user_bonus_balance else "0.00" }}
                 </a>
             </div>
         </div>

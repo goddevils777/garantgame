@@ -54,8 +54,30 @@
         {% endwith %}
 
         <div class="balance-card">
-            <div class="balance-amount">${{ "%.2f"|format(user_balance) }}</div>
-            <div class="balance-label">Доступно для турниров</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                <div style="text-align: center; padding: 20px; background: rgba(76, 175, 80, 0.1); border-radius: 10px; border: 2px solid #4CAF50;">
+                    <div style="font-size: 2em; font-weight: bold; color: #2e7d32; margin-bottom: 5px;">
+                        ${{ "%.2f"|format(user_balance) }}
+                    </div>
+                    <div style="color: #666; font-size: 1em;">💰 Основной баланс</div>
+                    <small style="color: #666;">Для участия в турнирах</small>
+                </div>
+                
+                <div style="text-align: center; padding: 20px; background: rgba(255, 193, 7, 0.1); border-radius: 10px; border: 2px solid #ffc107;">
+                    <div style="font-size: 2em; font-weight: bold; color: #f57c00; margin-bottom: 5px;">
+                        ${{ "%.2f"|format(user_bonus_balance if user_bonus_balance else 0) }}
+                    </div>
+                    <div style="color: #666; font-size: 1em;">🎟️ Бонусный баланс</div>
+                    <small style="color: #666;">Купоны от турниров</small>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding: 15px; background: #e3f2fd; border-radius: 10px; margin-top: 15px;">
+                <div style="font-size: 1.2em; font-weight: bold; color: #1976d2; margin-bottom: 5px;">
+                    Общий баланс: ${{ "%.2f"|format((user_balance if user_balance else 0) + (user_bonus_balance if user_bonus_balance else 0)) }}
+                </div>
+                <small style="color: #666;">Основной + бонусный баланс</small>
+            </div>
         </div>
 
         <div class="topup-section">
