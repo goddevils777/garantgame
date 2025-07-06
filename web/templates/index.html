@@ -40,15 +40,9 @@
             {% if user and user.profile_created %}
                 <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        {% if user.photo_url %}
-                            <img src="{{ user.photo_url }}" 
-                                 style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);"
-                                 alt="Аватар">
-                        {% else %}
-                            <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
-                                🎮
-                            </div>
-                        {% endif %}
+                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; border: 2px solid rgba(255,255,255,0.3); font-weight: bold;">
+                            {{ user.first_name[0].upper() if user.first_name else '🎮' }}
+                        </div>
                         <div>
                             <strong style="font-size: 1.2em;">{{ user.unique_username }}</strong>
                             <br><small style="opacity: 0.8;">{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %}</small>

@@ -47,6 +47,10 @@ def init_database():
             cursor.execute('ALTER TABLE users ADD COLUMN pubg_nickname TEXT DEFAULT ""')
         except sqlite3.OperationalError:
             pass
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN bonus_balance REAL DEFAULT 0.0')
+        except sqlite3.OperationalError:
+            pass
         
         # Таблица турниров
         cursor.execute('''
@@ -169,7 +173,8 @@ def get_user_by_telegram_id_db(telegram_id):
             'pubg_nickname': user[7] if len(user) > 7 else '',
             'created_at': user[8] if len(user) > 8 else '',
             'created_tournaments': user[9] if len(user) > 9 else 0,
-            'joined_tournaments': user[10] if len(user) > 10 else 0
+            'joined_tournaments': user[10] if len(user) > 10 else 0,
+            'bonus_balance': user[11] if len(user) > 11 else 0.0
         }
     return None
 
@@ -474,6 +479,52 @@ def calculate_prize_distribution(max_players, entry_fee, distribution_type='pyra
         'prize_places': prize_places
     }
 
+def calculate_free_tournament_prizes(participants_count):
+    """Рассчитать призы для бесплатного турнира"""
+    if participants_count < 40:
+        return {
+            'total_prizes': 0,
+            'distribution': [],
+            'prize_places': 0
+        }
+    
+    # Определяем категорию по количеству участников
+    if 40 <= participants_count <= 60:
+        # 40-60 участников
+        distribution = [
+            {'place': 1, 'real_money': 10.0, 'bonus': 10.0, 'description': '$10 + купон $10'},
+            {'place': 2, 'real_money': 5.0, 'bonus': 5.0, 'description': '$5 + купон $5'},
+            {'place': 3, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 4, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 5, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'}
+        ]
+        prize_places = 5
+        
+    elif 61 <= participants_count <= 80:
+        # 61-80 участников
+        distribution = [
+            {'place': 1, 'real_money': 10.0, 'bonus': 10.0, 'description': '$10 + купон $10'},
+            {'place': 2, 'real_money': 5.0, 'bonus': 5.0, 'description': '$5 + купон $5'},
+            {'place': 3, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 4, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 5, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 6, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 7, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'}
+        ]
+        prize_places = 7
+        
+    else:  # 81-100 участников
+        distribution = [
+            {'place': 1, 'real_money': 10.0, 'bonus': 10.0, 'description': '$10 + купон $10'},
+            {'place': 2, 'real_money': 5.0, 'bonus': 5.0, 'description': '$5 + купон $5'},
+            {'place': 3, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 4, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 5, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 6, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 7, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 8, 'real_money': 0.0, 'bonus': 5.0, 'description': 'купон $5'},
+            {'place': 9, 'real_money': 0.0, 'bonus':
+
 def get_user_balance(telegram_id):
     """Получить баланс пользователя"""
     conn = sqlite3.connect(DB_PATH)
@@ -484,6 +535,43 @@ def get_user_balance(telegram_id):
     conn.close()
     
     return result[0] if result else 0.0
+
+def get_user_bonus_balance(telegram_id):
+    """Получить бонусный баланс пользователя"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT bonus_balance FROM users WHERE telegram_id = ?', (telegram_id,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    return result[0] if result else 0.0
+
+def update_user_bonus_balance(telegram_id, new_bonus_balance):
+    """Обновить бонусный баланс пользователя"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('UPDATE users SET bonus_balance = ? WHERE telegram_id = ?', (new_bonus_balance, telegram_id))
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Ошибка обновления бонусного баланса: {e}")
+        return False
+    finally:
+        conn.close()
+
+def add_bonus_balance(telegram_id, amount, description):
+    """Добавить бонусный баланс и создать транзакцию"""
+    current_bonus = get_user_bonus_balance(telegram_id)
+    new_bonus = current_bonus + amount
+    
+    if update_user_bonus_balance(telegram_id, new_bonus):
+        add_transaction(telegram_id, 'bonus_reward', amount, description)
+        return True, f"Бонус +${amount:.2f} добавлен! Бонусный баланс: ${new_bonus:.2f}"
+    else:
+        return False, "Ошибка добавления бонуса"
 
 def update_user_balance(telegram_id, new_balance):
     """Обновить баланс пользователя"""

@@ -29,29 +29,23 @@ async def auth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"🔍 Начинаем авторизацию для пользователя: {first_name} (ID: {user_id})")
     
     # Получение аватарки с правильным формированием ссылки
+
+    # Получение аватарки
     photo_url = ""
     try:
-        print("📸 Пытаемся получить фото профиля...")
         user_profile_photos = await context.bot.get_user_profile_photos(user_id, limit=1)
-        print(f"📊 Количество фото: {user_profile_photos.total_count}")
         
         if user_profile_photos.total_count > 0:
-            print("✅ Фото найдено, получаем файл...")
             largest_photo = user_profile_photos.photos[0][-1]
-            print(f"📋 File ID: {largest_photo.file_id}")
-            
             file_info = await context.bot.get_file(largest_photo.file_id)
-            print(f"📂 File path from API: {file_info.file_path}")
             
-            # ИСПРАВЛЕНИЕ: file_info.file_path уже содержит только путь к файлу
-            photo_url = file_info.file_path
-            print(f"🔗 Итоговая ссылка: {photo_url}")
+            # Формируем полную ссылку на аватарку
+            photo_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+            print(f"🔗 Ссылка на аватарку: {photo_url}")
         else:
             print("❌ У пользователя нет фото профиля")
     except Exception as e:
         print(f"🚨 ОШИБКА получения аватарки: {e}")
-        import traceback
-        traceback.print_exc()
     
     # Создаем ссылку
     current_time = int(time.time())
@@ -60,7 +54,7 @@ async def auth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"🌐 Параметры авторизации: {auth_params}")
     
     # ЗАМЕНИ НА СВОЮ NGROK ССЫЛКУ
-    auth_url = f"https://a771-2a09-bac5-596c-52d-00-84-98.ngrok-free.app/auth/telegram?{auth_params}"
+    auth_url = f"https://99fb-2a09-bac1-7560-10-00-84-7c.ngrok-free.app/auth/telegram?{auth_params}"
     
     welcome_message = f"""
 🎮 Добро пожаловать в GarantGame!

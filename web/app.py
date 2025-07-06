@@ -238,6 +238,8 @@ def telegram_auth():
     last_name = auth_data.get('last_name', '')
     username = auth_data.get('username', '')
     photo_url = auth_data.get('photo_url', '')
+    print(f"🖼️ Получена photo_url: '{photo_url}'")
+    print(f"📊 Все данные: {auth_data}")
     auth_date = auth_data.get('auth_date')
     
     print(f"🖼️ photo_url после обработки: '{photo_url}'")
@@ -334,9 +336,17 @@ def create_tournament():
         max_players = int(max_players)
         entry_fee = float(entry_fee)
         
-        if min_players < 10 or min_players > 100:
-            flash('Минимум участников должен быть от 10 до 100', 'error')
-            return redirect(url_for('create_tournament_page'))
+        # Проверка минимума участников в зависимости от типа турнира
+        if entry_fee == 0:
+            # Бесплатный турнир - минимум 40 участников
+            if min_players < 40 or min_players > 100:
+                flash('Для бесплатного турнира минимум участников должен быть от 40 до 100', 'error')
+                return redirect(url_for('create_tournament_page'))
+        else:
+            # Платный турнир - минимум 10 участников
+            if min_players < 10 or min_players > 100:
+                flash('Для платного турнира минимум участников должен быть от 10 до 100', 'error')
+                return redirect(url_for('create_tournament_page'))
             
         if max_players < 10 or max_players > 100:
             flash('Максимум участников должен быть от 10 до 100', 'error')
@@ -983,6 +993,8 @@ def join_tournament_with_balance(tournament_id):
             flash('💡 Пополните баланс для участия в турнире', 'warning')
     
     return redirect(url_for('tournament_detail', tournament_id=tournament_id))
+
+
 
 if __name__ == '__main__':
     print(f"🌐 Веб-интерфейс {BOT_NAME} запущен!")
