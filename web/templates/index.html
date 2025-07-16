@@ -46,8 +46,12 @@
                         <div>
                             <strong style="font-size: 1.2em;">{{ user.unique_username }}</strong>
                             <br><small style="opacity: 0.8;">{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %}</small>
+                            <br><small style="background: #ff6b35; color: white; padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-top: 5px; display: inline-block;">🎮 PUBG: {{ user_data.pubg_nickname if user_data and user_data.pubg_nickname else "Не указан" }}</small>
                         </div>
-                        <div style="margin-left: auto;">
+                        <div style="margin-left: auto; display: flex; gap: 10px;">
+                            <a href="/pubg_settings" style="color: white; text-decoration: none; padding: 8px 15px; background: rgba(255,255,255,0.2); border-radius: 5px;">
+                                ⚙️ PUBG
+                            </a>
                             <a href="/logout" style="color: white; text-decoration: none; padding: 8px 15px; background: rgba(255,255,255,0.2); border-radius: 5px;">
                                 🚪 Выйти
                             </a>
@@ -104,7 +108,7 @@
             {% endif %}
         {% endwith %}
 
-         <h2>🌐 Все турниры</h2>
+         <h2>🌐 Все турниры</h2><br>
         <div class="tournaments">
             {% if tournaments %}
                 {% for tournament in tournaments %}
@@ -123,6 +127,9 @@
                     </div>
                     <div class="tournament-info">
                         <strong>Создатель:</strong> {{ tournament.creator }}
+                    </div>
+                    <div class="tournament-info">
+                        <strong>Поддержка:</strong> <a href="https://t.me/your_support_username" target="_blank" style="color: #667eea; text-decoration: none;">@your_support_username</a>
                     </div>
                     <div class="tournament-info">
                         <strong>Участники:</strong> {{ tournament.current_players }} из {{ tournament.min_players }}-{{ tournament.max_players }}

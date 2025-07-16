@@ -54,7 +54,7 @@ async def auth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"🌐 Параметры авторизации: {auth_params}")
     
     # ЗАМЕНИ НА СВОЮ NGROK ССЫЛКУ
-    auth_url = f"https://99fb-2a09-bac1-7560-10-00-84-7c.ngrok-free.app/auth/telegram?{auth_params}"
+    auth_url = f"https://1873664ce89b.ngrok-free.app/auth?{auth_params}"
     
     welcome_message = f"""
 🎮 Добро пожаловать в GarantGame!
@@ -76,11 +76,17 @@ async def auth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Обнови функцию start для обработки параметра auth
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /start"""
+    print(f"🔍 Получена команда /start")
+    print(f"🔍 Аргументы: {context.args}")
+    print(f"🔍 Текст сообщения: {update.message.text}")
+    
     # Проверяем, есть ли параметр auth
     if context.args and context.args[0] == 'auth':
+        print(f"✅ Найден параметр auth, вызываем auth_start")
         await auth_start(update, context)
         return
     
+    print(f"❌ Параметр auth не найден, обычный start")
     await update.message.reply_text(
         f"Привет! Это {BOT_NAME} - бот для управления турнирами!\n"
         f"Используй /help для списка команд."
